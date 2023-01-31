@@ -13,15 +13,17 @@ import (
 )
 
 const (
-	DefaultTimeout = 500 * time.Millisecond
+	defaultTimeout      = 500 * time.Millisecond
+	defaultFramesBuffer = 100
 )
 
 type Monitor struct {
 	ctx  context.Context
 	stop context.CancelFunc
 
-	iface  *net.Interface
-	handle *pcap.Handle
+	iface    *net.Interface
+	handle   *pcap.Handle
+	framesCh chan Frame
 }
 
 type Config struct {
@@ -30,7 +32,8 @@ type Config struct {
 
 func NewMonitor(cfg *Config) *Monitor {
 	return &Monitor{
-		iface: cfg.IFace,
+		iface:    cfg.IFace,
+		framesCh: make(chan Frame, defaultFramesBuffer),
 	}
 }
 
@@ -44,7 +47,7 @@ func (mon *Monitor) Configure() error {
 	}
 
 	log.Debugf("activate monitor on %s", mon.iface.Name)
-	if mon.handle, err = network.CaptureWithTimeout(mon.iface.Name, DefaultTimeout); err != nil {
+	if mon.handle, err = network.CaptureWithTimeout(mon.iface.Name, defaultTimeout); err != nil {
 		return err
 	}
 
@@ -54,7 +57,7 @@ func (mon *Monitor) Configure() error {
 // Closes pcap.Handle.
 func (mon *Monitor) Close() {
 	if mon.handle != nil {
-		log.Debugf("closing pcap handle")
+		log.Info("closing pcap handle")
 		mon.handle.Close()
 	}
 }
@@ -81,9 +84,12 @@ func (mon *Monitor) Start(ctx context.Context) error {
 		case packet := <-packets:
 			p := FromPacket(packet)
 			frame := p.DiscoverMgmtFrame()
-			// frame := p.DiscoverIEs()
 			if frame != nil {
 				log.Debugf("%+v", frame)
+				// send a copy of frame to output channel
+				// if len(frame.SSID) > 0 {
+				mon.framesCh <- Frame(*frame)
+				// }
 			}
 
 		default:
@@ -93,8 +99,13 @@ func (mon *Monitor) Start(ctx context.Context) error {
 }
 
 // Shutdowns sniffering service.
-func (mon *Monitor) Shutdown() error {
-	log.Infof("shutting down WiFi Monitor")
+func (mon *Monitor) Stop() error {
+	log.Infof("stopping WiFi Monitor")
 	mon.stop()
 	return nil
+}
+
+// Returns frames output channel.
+func (mon *Monitor) GetFrames() <-chan Frame {
+	return mon.framesCh
 }

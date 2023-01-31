@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-func FindIFaceByName(name string) (*net.Interface, error) {
+func InterfaceByName(name string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err

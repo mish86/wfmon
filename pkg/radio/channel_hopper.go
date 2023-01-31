@@ -96,8 +96,8 @@ func (h *ChannelHopperServ) Start(ctx context.Context) error {
 }
 
 // Shutdowns hopper service.
-func (h *ChannelHopperServ) Shutdown() error {
-	log.Infof("shutting down Channel Hopper")
+func (h *ChannelHopperServ) Stop() error {
+	log.Infof("stopping Channel Hopper")
 	h.stop()
 	return nil
 }

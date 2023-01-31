@@ -16,13 +16,18 @@ type Configer interface {
 	Configure() error
 }
 
+type Stopper interface {
+	Stop() error
+}
+
 type Shutdowner interface {
-	Shutdown() error
+	Stopper
+	Closer
 }
 
 type Serv interface {
 	Starter
 	Closer
 	Configer
-	Shutdowner
+	Stopper
 }

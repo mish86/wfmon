@@ -5,18 +5,18 @@ import (
 	"errors"
 	"net"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-	"wfmon/pkg"
+	mode "wfmon/pkg"
 	log "wfmon/pkg/logger"
-	"wfmon/pkg/network"
 	"wfmon/pkg/radio"
 	"wfmon/pkg/serv"
+	"wfmon/pkg/view/wifitable"
 	"wfmon/pkg/wifi"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +28,12 @@ const (
 type Application struct {
 	log *zap.SugaredLogger
 
-	servs []serv.Serv
+	servs       []serv.Serv
+	starters    []serv.Starter
+	shutdowners []serv.Shutdowner
+	program     *tea.Program
 
-	mode          pkg.Mode
+	mode          mode.Mode
 	gsTimeout     time.Duration
 	chHopInterval time.Duration
 	ifaceName     string
@@ -41,10 +44,11 @@ func loadApplication() *Application {
 	var err error
 
 	app := &Application{
-		ifaceName: "en0",
+		// TODO
+		ifaceName: strings.TrimSpace("en0"),
 	}
 
-	app.mode = pkg.FromString(os.Getenv(envMode))
+	app.mode = mode.FromString(os.Getenv(envMode))
 
 	if app.gsTimeout, err = time.ParseDuration(os.Getenv("GRACEFUL_SHUTDOWN_TIMEOUT")); err != nil {
 		app.gsTimeout = defaultGSTimeout
@@ -75,13 +79,15 @@ func (app *Application) closeLogger() {
 
 func (app *Application) findInterface() error {
 	var err error
-	if app.iface, err = network.FindIFaceByName(strings.TrimSpace(app.ifaceName)); err != nil {
+
+	if app.iface, err = net.InterfaceByName(app.ifaceName); err != nil {
 		return err
 	}
 
 	return nil
 }
 
+// Stops and closes services within @app.gsTimeout timeout.
 func (app *Application) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), app.gsTimeout)
 	defer cancel()
@@ -89,11 +95,15 @@ func (app *Application) shutdown() {
 	var wg sync.WaitGroup
 	wg.Add(len(app.servs))
 
-	for _, shutdowner := range app.servs {
+	for _, shutdowner := range app.shutdowners {
 		go func(shutdowner serv.Shutdowner) {
+			// indicate completion of service shutdown
 			defer wg.Done()
+			// close handles
+			defer shutdowner.Close()
 
-			if e := shutdowner.Shutdown(); e != nil {
+			// stop processing
+			if e := shutdowner.Stop(); e != nil {
 				log.Error(e)
 			}
 		}(shutdowner)
@@ -113,27 +123,8 @@ func (app *Application) shutdown() {
 	}
 }
 
-func (app *Application) startWithGS(ctx context.Context) {
-	c := make(chan os.Signal, 1)
-	// graceful shutdown
-	// when SIGINT (Ctrl+C)
-	// when SIGTERM (Ctrl+/)
-	// except SIGKILL, SIGQUIT will not be caught
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-
-	// run non-blocking service
-	app.start(ctx)
-
-	// block until we receive our signal.
-	sig := <-c
-
-	log.Info("received %s", sig)
-	log.Info("shutting down")
-
-	app.shutdown()
-}
-
-func (app *Application) start(ctx context.Context) {
+// Creates and initializes services and tea program.
+func (app *Application) init(ctx context.Context) {
 	// find interface by name
 	if err := app.findInterface(); err != nil {
 		log.Fatal(err)
@@ -150,10 +141,13 @@ func (app *Application) start(ctx context.Context) {
 		HopInterval: app.chHopInterval,
 	})
 
+	// create table controller
+	table := wifitable.NewTableCtrl(mon.GetFrames())
+
 	// setup services
-	app.servs = []serv.Serv{
-		mon, hopper,
-	}
+	app.servs = []serv.Serv{mon, hopper}
+	app.starters = []serv.Starter{mon, hopper, table}
+	app.shutdowners = []serv.Shutdowner{mon, hopper}
 
 	// run configurations
 	for _, configer := range app.servs {
@@ -163,18 +157,32 @@ func (app *Application) start(ctx context.Context) {
 		}
 	}
 
+	// create tea program
+	app.program = tea.NewProgram(
+		table,
+		tea.WithContext(ctx),
+		tea.WithInputTTY(),
+	)
+}
+
+// Runs services in seprate goroutings and blocks main with tea program.
+func (app *Application) start(ctx context.Context) {
 	// run services
-	for _, starter := range app.servs {
-		serv := starter
-		go func() {
-			if err := serv.Start(ctx); err != nil {
+	for _, starter := range app.starters {
+		go func(starter serv.Starter) {
+			if err := starter.Start(ctx); err != nil {
 				log.Fatal(err)
 			}
-
-			// close handlers
-			defer mon.Close()
-		}()
+		}(starter)
 	}
+
+	// Blocks application execution until SIGINT (Ctrl+C) and SIGTERM (Ctrl+/)
+	if _, err := app.program.Run(); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Info("shutting down")
+	app.shutdown()
 }
 
 func main() {
@@ -184,14 +192,9 @@ func main() {
 	defer app.closeLogger()
 
 	log.Info("🚀 starting")
+	log.Debugf("app mode %s", app.mode)
 
 	ctx := context.Background()
-	app.startWithGS(ctx)
-
-	// const liveTime = 10 * time.Second
-	// ctx, stop := context.WithCancel(ctx)
-	// app.start(ctx)
-	// liveTimer := time.NewTimer(liveTime)
-	// <-liveTimer.C
-	// stop()
+	app.init(ctx)
+	app.start(ctx)
 }

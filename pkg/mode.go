@@ -1,4 +1,4 @@
-package pkg
+package app
 
 import (
 	"strings"
@@ -29,7 +29,7 @@ func FromString(s string) Mode {
 		"PROD": Prod,
 	}
 
-	if m, ok := modeMap[strings.ToLower(s)]; ok {
+	if m, ok := modeMap[strings.ToUpper(s)]; ok {
 		return m
 	}
 

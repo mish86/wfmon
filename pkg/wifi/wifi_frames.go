@@ -12,15 +12,13 @@ type RadioFrame struct {
 	Frequency int  // Channel Frequency
 	RSSI      int8 // Received Signal Strength Indicator (RSSI)
 	Noise     int8 // Noise level
-	SNR       int8 // Signal to Noise Ratio (SNR)
 }
 
 func (f *RadioFrame) String() string {
-	return fmt.Sprintf("Frequency:%d RSSI:%d Noise:%d SNR:%d",
+	return fmt.Sprintf("Frequency:%d RSSI:%d Noise:%d",
 		f.Frequency,
 		f.RSSI,
 		f.RSSI,
-		f.SNR,
 	)
 }
 
@@ -81,15 +79,17 @@ type SSIDIE struct {
 }
 
 type InformationElements struct {
-	*HTOperationsIE // optional
-	*DSSetIE        // optional
-	*SSIDIE         // optional
+	HTOperationsIE // optional
+	DSSetIE        // optional
+	// SSIDIE         // optional
 }
 
 func (ie *InformationElements) String() string {
-	return fmt.Sprintf("HT:%+v DS:%+v SSID:%+v", ie.HTOperationsIE, ie.DSSetIE, ie.SSIDIE)
+	// return fmt.Sprintf("HT:%+v DS:%+v SSID:%+v", ie.HTOperationsIE, ie.DSSetIE, ie.SSIDIE)
+	return fmt.Sprintf("HT:%+v DS:%+v", ie.HTOperationsIE, ie.DSSetIE)
 }
 
+// Management frame.
 type MgmtFrame struct {
 	Dot11Frame
 	InformationElements
@@ -97,5 +97,8 @@ type MgmtFrame struct {
 }
 
 func (f *MgmtFrame) String() string {
-	return fmt.Sprintf("Dot11:%+v, SSID:%s IE:%+v", f.Dot11Frame, f.SSID, &f.InformationElements)
+	return fmt.Sprintf("Dot11:%+v, SSID:%s IE:%+v", f.Dot11Frame, f.SSID, f.InformationElements)
 }
+
+// Generic frame.
+type Frame MgmtFrame

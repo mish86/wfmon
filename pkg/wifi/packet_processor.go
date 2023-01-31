@@ -62,14 +62,11 @@ func (p *PacketDiscover) DiscoverRadioFrame() *RadioFrame {
 	rssi := radio.DBMAntennaSignal
 	// Noise level
 	noise := radio.DBMAntennaNoise
-	// Signal to Noise Ratio (SNR)
-	snr := rssi - noise
 
 	return &RadioFrame{
 		Frequency: freq,
 		RSSI:      rssi,
 		Noise:     noise,
-		SNR:       snr,
 	}
 }
 
@@ -128,13 +125,13 @@ func (p *PacketDiscover) DiscoverIEs() *InformationElements {
 			continue
 		}
 
-		//nolint:exhaustive // proces only 3 IE
+		//nolint:exhaustive // process only 3 IE
 		switch dot11info.ID {
-		case layers.Dot11InformationElementIDSSID:
-			if ie == nil {
-				ie = &InformationElements{}
-			}
-			ie.discoverSSIDIE(dot11info)
+		// case layers.Dot11InformationElementIDSSID:
+		// 	if ie == nil {
+		// 		ie = &InformationElements{}
+		// 	}
+		// 	ie.discoverSSIDIE(dot11info)
 
 		// Operation Elements can be discovered from
 		// Beacon, Reassociation Response & Probe Response frames transmitted by an AP.
@@ -153,19 +150,25 @@ func (p *PacketDiscover) DiscoverIEs() *InformationElements {
 		}
 	}
 
+	if ie != nil && ie.Channel == 0 && ie.PrimaryChannel != 0 {
+		ie.Channel = ie.PrimaryChannel
+	}
+
 	return ie
 }
 
 // Discovers SSID from Information Element.
-func (ie *InformationElements) discoverSSIDIE(dot11info *layers.Dot11InformationElement) {
-	ie.SSIDIE = &SSIDIE{
-		SSID: string(dot11info.Info),
-	}
-}
+// func (ie *InformationElements) discoverSSIDIE(dot11info *layers.Dot11InformationElement) {
+// 	if len(dot11info.Info) > 0 {
+// 		ie.SSIDIE = SSIDIE{
+// 			SSID: string(dot11info.Info),
+// 		}
+// 	}
+// }
 
 // Discovers HT Operations from Information Element.
 func (ie *InformationElements) discoverHTIE(dot11info *layers.Dot11InformationElement) {
-	ie.HTOperationsIE = &HTOperationsIE{
+	ie.HTOperationsIE = HTOperationsIE{
 		PrimaryChannel:         dot11info.Contents[2],
 		SecondaryChannelOffset: dot11info.Contents[3] & 0b00000011,        //nolint:gomnd // ignore
 		SupportedChannelWidth:  (dot11info.Contents[3] & 0b00000100) >> 2, //nolint:gomnd // ignore
@@ -174,7 +177,7 @@ func (ie *InformationElements) discoverHTIE(dot11info *layers.Dot11InformationEl
 
 // Discovers DS Set from Information Element.
 func (ie *InformationElements) discoverDSSetIE(dot11info *layers.Dot11InformationElement) {
-	ie.DSSetIE = &DSSetIE{
+	ie.DSSetIE = DSSetIE{
 		Channel: dot11info.Info[0],
 	}
 }
@@ -195,9 +198,9 @@ func (p *PacketDiscover) DiscoverMgmtFrame() *MgmtFrame {
 
 			if ie := p.DiscoverIEs(); ie != nil {
 				frame.InformationElements = *ie
-				if len(ie.SSID) > 0 {
-					frame.SSID = ie.SSID
-				}
+				// if len(ie.SSID) > 0 {
+				// frame.SSID = ie.SSID
+				// }
 			}
 
 			return frame
