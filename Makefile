@@ -17,7 +17,7 @@ run:
 	$(eval -include .env)
 	$(eval export)
 # env
-	go run ${GOMAIN}
+	go run -race ${GOMAIN}
 
 ## clean: Clean build files.
 clean:
