@@ -1,28 +1,91 @@
 package wifi
 
-type Band int
-
 // https://mrncciew.com/2014/10/15/cwap-2-4ghz-vs-5ghz/
+type Band uint8
+
 const (
 	Unknown Band = iota
 	ISM          // 2.4GHz (industrial, scientific, and medical - ISM bands)
-	UNII         // 5 GHz (Unlicensed National Information Infrastructure – UNII bands)
+	UNII1        // 5 GHz (Unlicensed National Information Infrastructure – UNII bands)
+	UNII2
+	UNII3
 )
 
 func (b Band) String() string {
-	return []string{Unknown: "", ISM: "2.4", UNII: "5"}[b]
+	return []string{Unknown: "", ISM: "2.4", UNII1: "5", UNII2: "5", UNII3: "5"}[b]
 }
 
 // Returns '2.4GHz' or '5GHz'.
-func GetBandByChan(channel int) Band {
+func GetBandByChan(channel uint8) Band {
 	switch {
 	case channel >= 1 && channel <= 14:
 		return ISM
-	case channel >= 36 && channel <= 64:
-		return UNII
-	case channel >= 100 && channel <= 140:
-		return UNII
+	case channel >= 32 && channel <= 48:
+		return UNII1
+	case channel >= 50 && channel <= 142:
+		return UNII2
+	case channel >= 142 && channel <= 177:
+		return UNII3
 	default:
 		return Unknown
+	}
+}
+
+// https://mrncciew.com/2014/11/04/cwap-ht-operations-ie/
+type SecondaryChannelOffset uint8
+
+const (
+	SCN      SecondaryChannelOffset = 0 // no secondary channel is present
+	SCA      SecondaryChannelOffset = 1 // secondary channel is above the primary channel
+	Reserved SecondaryChannelOffset = 2 // reserved
+	SCB      SecondaryChannelOffset = 3 // secondary channel is below the primary channel
+)
+
+func (o SecondaryChannelOffset) String() string {
+	return []string{SCN: "SCN", SCA: "SCA", Reserved: "RSRVD", SCB: "SCB"}[o]
+}
+
+func GetBondingWidth(channel, offset uint8) uint16 {
+	band := GetBandByChan(channel)
+	// Unknown bandwidth
+	if band == Unknown {
+		return 0
+	}
+
+	// No bonding
+	var bondingMultiplier uint16 = 1
+
+	if offsetEnum := SecondaryChannelOffset(offset); offsetEnum == SCA || offsetEnum == SCB {
+		// bonding
+		bondingMultiplier = 2
+	}
+
+	// ISM bonding
+	if band == ISM {
+		return bondingMultiplier * getISMWidth(channel)
+	}
+
+	// UNII bonding
+	return bondingMultiplier * getUNIIWidth(channel)
+}
+
+// ISM bonding width.
+func getISMWidth(channel uint8) uint16 {
+	//nolint:gomnd // ignore
+	return 20
+}
+
+// UNII bonding width.
+func getUNIIWidth(channel uint8) uint16 {
+	//nolint:gomnd // ignore
+	switch channel {
+	case 50, 114, 163:
+		return 160
+	case 42, 58, 106, 122, 138, 155, 171:
+		return 80
+	case 34, 38, 46, 54, 62, 102, 110, 118, 126, 134, 142, 151, 159, 167, 175:
+		return 40
+	default:
+		return 20
 	}
 }

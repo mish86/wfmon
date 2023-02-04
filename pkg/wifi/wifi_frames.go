@@ -64,6 +64,7 @@ func NewDot11Frame(dot11Type layers.Dot11Type, addrs ...net.HardwareAddr) *Dot11
 	}
 }
 
+// High Throughput Operations Information Element.
 type HTOperationsIE struct {
 	PrimaryChannel         uint8
 	SecondaryChannelOffset uint8
