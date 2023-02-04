@@ -13,7 +13,7 @@ import (
 	log "wfmon/pkg/logger"
 	"wfmon/pkg/radio"
 	"wfmon/pkg/serv"
-	"wfmon/pkg/view/wifitable"
+	wifitable "wfmon/pkg/widgets/table"
 	"wfmon/pkg/wifi"
 
 	tea "github.com/charmbracelet/bubbletea"

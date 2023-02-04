@@ -1,25 +1,28 @@
-networksetup -listallhardwareports
-    Hardware Port: Wi-Fi
-    Device: en0
-    Ethernet Address: 3c:22:fb:ef:dd:1d
+### Must have features
+- [x] Calcualte Width in Mghz (20/40/80/160).
+- [x] Switch column view for RSSI/Quality/Bars with sorting support.
+- [ ] Generate code from manuf dictionary. Add Manufacture data. https://go.dev/blog/generate
+- [ ] Switch column view for BSSID/Manufacture with sorting support.
+- [ ] Mark a row with color or emoji, if row relates to a network associated before wfmon start.
+- [ ] Add flags support. -i --interface. if not provided then use default wifi interface.
 
-networksetup -getmacaddress en0
-	Ethernet Address: 3c:22:fb:ef:dd:1d (Device: en0)
+### Next Minor features
+- [ ] Add Seen data/column.
+- [ ] Add b/g/n/ac data.
+- [ ] Add Rate data.
+- [ ] Add Vendor data.
+- [ ] ?Select default wifi interface using CoreWLAN api.
+- [ ] ?Deassociate interface from network using CoreWLAN api.
+- [ ] ?Change Radio channels hopping using CoreWLAN api.
 
-networksetup -getairportnetwork en0
-	Current Wi-Fi Network: WIFI_196
-
-networksetup -getnetworkserviceenabled Wi-Fi
-	Enabled
-
-system_profiler SPAirPortDataType -json | jq . -- reports system hardware and software configuration
-networksetup -setairportnetwork en0 WIFI_196 -- connect to ap
-networksetup -setnetworkserviceenabled Wi-Fi off/on -- turn off/on wifi
-sudo airport en0 -z -- disconnect from ap
-networksetup -removepreferredwirelessnetwork en0 WIFI_196
-	Removed WIFI_196 from the preferred networks list
-
-arp -an
-	? (192.168.1.1) at 4c:32:2d:10:80:70 on en0 ifscope [ethernet]
-	? (192.168.1.255) at ff:ff:ff:ff:ff:ff on en0 ifscope [ethernet]
-	? (224.0.0.251) at 1:0:5e:0:0:fb on en0 ifscope permanent [ethernet]
+### Next Majors features
+- [ ] Coloring of rows according to RSSI/Quality/Bars value (custom rows render).
+- [ ] Support average sampling (RSSI, Noise values).
+- [ ] Add an option to start program with analyze of given pcap file and end execution. -f --file.
+- [ ] Sniffering with timeout, print simple output and end program execution. -p --print columns; -t --timeout.
+- [ ] ?Add packets received line above table.
+- [ ] Add Info (with more data) widget of selected network on right table side.
+- [ ] Add sectrum chart right below table.
+- [ ] Add RSSI/Quality/Bars line chart right below table.
+- [ ] Windows support
+- [ ] Linux support

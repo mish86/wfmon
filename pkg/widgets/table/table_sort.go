@@ -7,7 +7,7 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-// Sort order enum.
+// Sorting order enum.
 type Order uint8
 
 const (
@@ -16,6 +16,8 @@ const (
 	DESC
 )
 
+// Returns string presentation of sorting order.
+// Used in column title view.
 func (o Order) String() string {
 	//nolint:exhaustive // ignore
 	switch o {
@@ -38,19 +40,19 @@ func (o Order) swap() Order {
 }
 
 // Sorting definition.
-type SortDef struct {
-	col    string
+type Sort struct {
+	title  string
 	ord    Order
 	sorter FncSorter
 }
 
 // Change sorting order.
-func (s *SortDef) ChangeOrder() {
+func (s *Sort) SwapOrder() {
 	s.ord = s.ord.swap()
 }
 
 // Returns @sort.Interface depending on order value.
-func (s *SortDef) Sorter(networks NetworkSlice) sort.Interface {
+func (s *Sort) Sorter(networks NetworkSlice) sort.Interface {
 	if s.ord == ASC || s.ord == None {
 		return s.sorter(networks)
 	}
@@ -58,12 +60,27 @@ func (s *SortDef) Sorter(networks NetworkSlice) sort.Interface {
 	return &Inverser{s.sorter(networks)}
 }
 
+// Returns sorting order.
+func (s *Sort) Order() Order {
+	return s.ord
+}
+
+// Returns sorting order.
+func (s *Sort) SetOrder(ord Order) {
+	s.ord = ord
+}
+
+// Returns column title.
+func (s *Sort) Title() string {
+	return s.title
+}
+
 // Inverses resul of @sort.Interface.Less.
 type Inverser struct {
 	sort.Interface
 }
 
-// Inverses resul of @sort.Interface.Less.
+// Inverses result of @sort.Interface.Less.
 func (a Inverser) Less(i, j int) bool {
 	return !a.Interface.Less(i, j)
 }
@@ -71,42 +88,50 @@ func (a Inverser) Less(i, j int) bool {
 // Wraps NetworkSlice with @sort.Interface.
 type FncSorter func(networks NetworkSlice) sort.Interface
 
-// Returns Sort Definition regeisterd for given column.
-// Default is @BySSIDByBSSIDSorter.
-func ColumnSorterGenerator(column string) SortDef {
-	sorters := map[string]SortDef{
+// Returns a sort regeisterd for given column.
+// Default is @BySSIDSorter.
+func ColumnSorterGenerator(column string) Sort {
+	sorters := map[string]Sort{
 		ColumnBSSIDTitle: {
-			col:    ColumnBSSIDTitle,
+			title:  ColumnBSSIDTitle,
 			sorter: ByBSSIDSorter(),
 		},
 		ColumnSSIDTitle: {
-			col: ColumnSSIDTitle,
+			title: ColumnSSIDTitle,
 			sorter: func(networks NetworkSlice) sort.Interface {
 				return BySSIDSorter(networks)
 			},
 		},
 		ColumnChanTitle: {
-			col:    ColumnChanTitle,
+			title:  ColumnChanTitle,
 			sorter: ByChannelSorter(),
 		},
 		ColumnWidthTitle: {
-			col:    ColumnWidthTitle,
+			title:  ColumnWidthTitle,
 			sorter: ByChannelWidthSorter(),
 		},
 		ColumnBandTitle: {
-			col:    ColumnBandTitle,
+			title:  ColumnBandTitle,
 			sorter: ByBandwidthSorter(),
 		},
 		ColumnRSSITitle: {
-			col:    ColumnRSSITitle,
+			title:  ColumnRSSITitle,
 			sorter: ByRSSISorter(),
 		},
+		ColumnQualityTitle: {
+			title:  ColumnQualityTitle,
+			sorter: ByQualitySorter(),
+		},
+		ColumnBarsTitle: {
+			title:  ColumnBarsTitle,
+			sorter: ByBarsSorter(),
+		},
 		ColumnNoiseTitle: {
-			col:    ColumnNoiseTitle,
+			title:  ColumnNoiseTitle,
 			sorter: ByNoiseSorter(),
 		},
 		ColumnSNRTitle: {
-			col:    ColumnSNRTitle,
+			title:  ColumnSNRTitle,
 			sorter: BySNRSorter(),
 		},
 	}
@@ -120,19 +145,23 @@ func ColumnSorterGenerator(column string) SortDef {
 	return sorter
 }
 
+// Implements default sorter behaviour for all columns.
 type DefaultSorter struct {
 	len  func() int
 	swap func(i, j int)
 	less func(i, j int) bool
 }
 
+// Takes an implementation of getter and returns sorter as high order func.
 func Sorter[T constraints.Ordered](fncGet func(n NetworkSlice, i int) T) FncSorter {
 	return func(n NetworkSlice) sort.Interface {
 		return &DefaultSorter{
 			len:  func() int { return len(n) },
 			swap: func(i, j int) { n[i], n[j] = n[j], n[i] },
 			less: func(i, j int) bool {
+				// first sort by table field
 				cmp := cmp.Compare(fncGet(n, i), fncGet(n, j))
+				// then sort by table key
 				if cmp == 0 {
 					cmp = n[i].Key().Compare(n[j].Key())
 				}
@@ -152,6 +181,7 @@ func ByBSSIDSorter() FncSorter {
 }
 
 // Sort by SSID asc.
+// Sorts only by network table key.
 type BySSIDSorter NetworkSlice
 
 func (a BySSIDSorter) Len() int           { return len(a) }
@@ -160,22 +190,32 @@ func (a BySSIDSorter) Less(i, j int) bool { return a[i].Key().Compare(a[j].Key()
 
 // Sort by Channel asc.
 func ByChannelSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return n[i].Channel })
+	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Channel) })
 }
 
 // Sort by Channel Width asc.
 func ByChannelWidthSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return n[i].ChannelWidth })
+	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].ChannelWidth) })
 }
 
 // Sort by Bandwidth asc.
 func ByBandwidthSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) string { return n[i].Band })
+	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Band) })
 }
 
 // Sort by RSSI asc.
 func ByRSSISorter() FncSorter {
 	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].RSSI) })
+}
+
+// Sort by Quality asc.
+func ByQualitySorter() FncSorter {
+	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Quality) })
+}
+
+// Sort by Quality/Bars asc.
+func ByBarsSorter() FncSorter {
+	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Quality) })
 }
 
 // Sort by Noise asc.
