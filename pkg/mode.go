@@ -18,7 +18,7 @@ func (m Mode) String() string {
 	}
 
 	if m < 0 || int(m) >= len(modeStrings) {
-		return Dev.String()
+		return Prod.String()
 	}
 	return modeStrings[m]
 }
@@ -33,5 +33,5 @@ func FromString(s string) Mode {
 		return m
 	}
 
-	return Dev
+	return Prod
 }
