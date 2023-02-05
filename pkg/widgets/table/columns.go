@@ -1,6 +1,11 @@
 package wifitable
 
-import "github.com/charmbracelet/bubbles/table"
+import (
+	"sort"
+	"strconv"
+
+	"github.com/charmbracelet/bubbles/table"
+)
 
 const (
 	ColumnSSIDTitle    = "Network"
@@ -89,6 +94,7 @@ func GenerateColumns(generators ...FncColumnGenerator) ColumnViewSlice {
 	return columns
 }
 
+// Returns default columns viewers.
 func GenerateDefaultColumns() ColumnViewSlice {
 	return GenerateColumns(
 		ColumnSSID,
@@ -100,4 +106,79 @@ func GenerateDefaultColumns() ColumnViewSlice {
 		ColumnNoise,
 		ColumnSNR,
 	)
+}
+
+// Returns a sort regeistered for given column.
+// Default is @BySSIDSorter.
+func ColumnSorterGenerator(column string) Sort {
+	sorters := map[string]Sort{
+		ColumnBSSIDTitle: {
+			title:  ColumnBSSIDTitle,
+			sorter: ByBSSIDSorter(),
+		},
+		ColumnSSIDTitle: {
+			title: ColumnSSIDTitle,
+			sorter: func(networks NetworkSlice) sort.Interface {
+				return BySSIDSorter(networks)
+			},
+		},
+		ColumnChanTitle: {
+			title:  ColumnChanTitle,
+			sorter: ByChannelSorter(),
+		},
+		ColumnWidthTitle: {
+			title:  ColumnWidthTitle,
+			sorter: ByChannelWidthSorter(),
+		},
+		ColumnBandTitle: {
+			title:  ColumnBandTitle,
+			sorter: ByBandwidthSorter(),
+		},
+		ColumnRSSITitle: {
+			title:  ColumnRSSITitle,
+			sorter: ByRSSISorter(),
+		},
+		ColumnQualityTitle: {
+			title:  ColumnQualityTitle,
+			sorter: ByQualitySorter(),
+		},
+		ColumnBarsTitle: {
+			title:  ColumnBarsTitle,
+			sorter: ByBarsSorter(),
+		},
+		ColumnNoiseTitle: {
+			title:  ColumnNoiseTitle,
+			sorter: ByNoiseSorter(),
+		},
+		ColumnSNRTitle: {
+			title:  ColumnSNRTitle,
+			sorter: BySNRSorter(),
+		},
+	}
+
+	sorter, ok := sorters[column]
+	if !ok {
+		// default sorter
+		sorter = sorters[ColumnSSIDTitle]
+	}
+
+	return sorter
+}
+
+// Returns string presentation of cell by column title.
+func GenerateRowGetters() map[string]FncRowGetter {
+	getters := map[string]FncRowGetter{
+		ColumnSSIDTitle:    func(data *NetworkData) string { return data.NetworkName },
+		ColumnBSSIDTitle:   func(data *NetworkData) string { return data.BSSID },
+		ColumnChanTitle:    func(data *NetworkData) string { return strconv.Itoa(int(data.Channel)) },
+		ColumnWidthTitle:   func(data *NetworkData) string { return strconv.Itoa(int(data.ChannelWidth)) },
+		ColumnBandTitle:    func(data *NetworkData) string { return data.Band.String() },
+		ColumnRSSITitle:    func(data *NetworkData) string { return strconv.Itoa(int(data.RSSI)) },
+		ColumnQualityTitle: func(data *NetworkData) string { return data.Quality.String() },
+		ColumnBarsTitle:    func(data *NetworkData) string { return data.Quality.Bars() },
+		ColumnNoiseTitle:   func(data *NetworkData) string { return strconv.Itoa(int(data.Noise)) },
+		ColumnSNRTitle:     func(data *NetworkData) string { return strconv.Itoa(int(data.SNR)) },
+	}
+
+	return getters
 }

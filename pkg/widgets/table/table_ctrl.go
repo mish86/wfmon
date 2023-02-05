@@ -30,6 +30,7 @@ type TableCtrl struct {
 	keys      *KeyMap
 
 	data            *TableData
+	getters         map[string]FncRowGetter
 	view            *TableView
 	cursor          *NetworkTableKey
 	cursorLock      sync.Mutex
@@ -41,8 +42,11 @@ type RefreshMsg time.Time
 
 // Returns new network table controller.
 func NewTableCtrl(frames <-chan wifi.Frame) *TableCtrl {
+	columns := GenerateDefaultColumns()
+	getters := GenerateRowGetters()
+
 	data := NewTableData()
-	view := NewTableView()
+	view := NewTableView(columns)
 	keys := NewKeyMap()
 	help := help.New()
 	help.ShowAll = true
@@ -51,6 +55,7 @@ func NewTableCtrl(frames <-chan wifi.Frame) *TableCtrl {
 	ctrl := &TableCtrl{
 		framesCh:        frames,
 		data:            data,
+		getters:         getters,
 		view:            view,
 		help:            &help,
 		keys:            keys,
@@ -83,11 +88,14 @@ func (c *TableCtrl) Start(ctx context.Context) error {
 	}
 }
 
+// Network data field getter. Returns string value to pass in tea.Row.
+type FncRowGetter func(data *NetworkData) string
+
 // Returns sorted rows to redraw tick.
-// TODO rework
 func (c *TableCtrl) GetRows() ([]table.Row, int) {
 	networks := c.data.NetworkSlice()
 
+	// Sorts in ASC/DESC order depending on current Order value.
 	sort.Sort(c.sort.Sorter(networks))
 
 	// lock cursor update
@@ -101,36 +109,23 @@ func (c *TableCtrl) GetRows() ([]table.Row, int) {
 	rows := make([]table.Row, len(networks))
 	cursor := 0
 	for rowNum, data := range networks {
-		key := data.Key()
+		d := data
+		key := d.Key()
 		if key.Compare(c.cursor) == 0 {
 			cursor = rowNum
 		}
-		var signalView = func() string {
-			col, ok := c.view.GetColumnByTitle(ColumnRSSITitle)
-			if !ok {
-				return strconv.Itoa(int(data.RSSI))
-			}
-			switch col.Title() {
-			case ColumnRSSITitle:
-				return strconv.Itoa(int(data.RSSI))
-			case ColumnQualityTitle:
-				return data.Quality.String()
-			case ColumnBarsTitle:
-				return data.Quality.Bars()
-			default:
-				return strconv.Itoa(int(data.RSSI))
+
+		cols := c.view.TableColumns()
+		row := make([]string, len(cols))
+
+		for i, col := range cols {
+			if getter, found := c.getters[col.Title]; !found {
+				log.Errorf("data source for %s not found", col.Title)
+			} else {
+				row[i] = getter(&d)
 			}
 		}
-		rows[rowNum] = table.Row{
-			data.NetworkName,
-			data.BSSID,
-			strconv.Itoa(int(data.Channel)),
-			strconv.Itoa(int(data.ChannelWidth)),
-			data.Band.String(),
-			signalView(),
-			strconv.Itoa(int(data.Noise)),
-			strconv.Itoa(int(data.SNR)),
-		}
+		rows[rowNum] = row
 	}
 
 	return rows, cursor
@@ -278,6 +273,8 @@ func (c *TableCtrl) swapSignalView() {
 	col = swapper.Next()
 	// restore sorting order
 	col.(ColumnOrder).SetOrder(sort.Order())
+	// store sorting information
+	c.sort = col.(ColumnOrder).Sort()
 	// update headers view
 	c.view.OnSort(col)
 }
@@ -285,14 +282,19 @@ func (c *TableCtrl) swapSignalView() {
 // Reads updated cursor position from view.
 func (c *TableCtrl) onCursortChanged() {
 	c.cursorLock.Lock()
-	row := c.SelectedRow()
+	defer c.cursorLock.Unlock()
+
+	if c.view.table.Cursor() < 0 || c.view.table.Cursor() >= len(c.view.table.Rows()) {
+		return
+	}
+
+	row := c.selectedRow()
 	bssIDCol, _ := c.view.GetColumnByTitle(ColumnBSSIDTitle)
 	ssIDCol, _ := c.view.GetColumnByTitle(ColumnSSIDTitle)
 	c.cursor = NewNetworkTableKey(row[bssIDCol.Index()], row[ssIDCol.Index()])
-	c.cursorLock.Unlock()
 }
 
 // Returns selected row.
-func (c *TableCtrl) SelectedRow() table.Row {
+func (c *TableCtrl) selectedRow() table.Row {
 	return c.view.table.SelectedRow()
 }

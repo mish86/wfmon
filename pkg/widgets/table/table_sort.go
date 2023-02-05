@@ -88,63 +88,6 @@ func (a Inverser) Less(i, j int) bool {
 // Wraps NetworkSlice with @sort.Interface.
 type FncSorter func(networks NetworkSlice) sort.Interface
 
-// Returns a sort regeisterd for given column.
-// Default is @BySSIDSorter.
-func ColumnSorterGenerator(column string) Sort {
-	sorters := map[string]Sort{
-		ColumnBSSIDTitle: {
-			title:  ColumnBSSIDTitle,
-			sorter: ByBSSIDSorter(),
-		},
-		ColumnSSIDTitle: {
-			title: ColumnSSIDTitle,
-			sorter: func(networks NetworkSlice) sort.Interface {
-				return BySSIDSorter(networks)
-			},
-		},
-		ColumnChanTitle: {
-			title:  ColumnChanTitle,
-			sorter: ByChannelSorter(),
-		},
-		ColumnWidthTitle: {
-			title:  ColumnWidthTitle,
-			sorter: ByChannelWidthSorter(),
-		},
-		ColumnBandTitle: {
-			title:  ColumnBandTitle,
-			sorter: ByBandwidthSorter(),
-		},
-		ColumnRSSITitle: {
-			title:  ColumnRSSITitle,
-			sorter: ByRSSISorter(),
-		},
-		ColumnQualityTitle: {
-			title:  ColumnQualityTitle,
-			sorter: ByQualitySorter(),
-		},
-		ColumnBarsTitle: {
-			title:  ColumnBarsTitle,
-			sorter: ByBarsSorter(),
-		},
-		ColumnNoiseTitle: {
-			title:  ColumnNoiseTitle,
-			sorter: ByNoiseSorter(),
-		},
-		ColumnSNRTitle: {
-			title:  ColumnSNRTitle,
-			sorter: BySNRSorter(),
-		},
-	}
-
-	sorter, ok := sorters[column]
-	if !ok {
-		// default sorter
-		sorter = sorters[ColumnSSIDTitle]
-	}
-
-	return sorter
-}
-
 // Implements default sorter behaviour for all columns.
 type DefaultSorter struct {
 	len  func() int

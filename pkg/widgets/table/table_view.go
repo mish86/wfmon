@@ -36,27 +36,6 @@ func getDefaultTableStyles() table.Styles {
 	}
 }
 
-// Returns default columns as slice and map.
-func getDefaultCols() (ColumnViewSlice, ColumnViewMap) {
-	// setup default columns sequence
-	cols := GenerateDefaultColumns()
-
-	// setup columns map by title
-	colsMap := make(ColumnViewMap, len(cols))
-	for _, col := range cols {
-		// consider swappable columns
-		if swapper, ok := col.(ColumnSwapper); ok {
-			for _, title := range swapper.Titles() {
-				colsMap[title] = col
-			}
-		} else {
-			colsMap[col.Title()] = col
-		}
-	}
-
-	return cols, colsMap
-}
-
 // Network table view.
 type TableView struct {
 	table         table.Model
@@ -69,8 +48,9 @@ type TableView struct {
 }
 
 // Returns new network table view.
-func NewTableView() *TableView {
-	cols, colsByName := getDefaultCols()
+func NewTableView(cols ColumnViewSlice) *TableView {
+	// cols, colsByName := getDefaultCols()
+	colsByName := cols.Map()
 	viewportStyle := getDefaultViewportStyle()
 	tableStyles := getDefaultTableStyles()
 

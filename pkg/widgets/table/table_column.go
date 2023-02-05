@@ -6,12 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
-type ColumnOrder interface {
-	Sort() Sort
-	SetOrder(ord Order)
-	SwapOrder()
-}
-
 // Column Viewer with number in table, title, width and sorting order.
 type ColumnViewer interface {
 	Index() int
@@ -21,8 +15,14 @@ type ColumnViewer interface {
 
 // Swaper of column view.
 type ColumnViewSwaper interface {
+	Titles() []string
 	Next() ColumnViewer
 	Prev() ColumnViewer
+}
+type ColumnOrder interface {
+	Sort() Sort
+	SetOrder(ord Order)
+	SwapOrder()
 }
 
 // Column View with number in table, title, width and sorting order.
@@ -71,13 +71,6 @@ func (view *ColumnView) SetOrder(ord Order) {
 // Swaps sorting order.
 func (view *ColumnView) SwapOrder() {
 	view.sort.SwapOrder()
-}
-
-// Swaper of column view.
-type ColumnSwapper interface {
-	Titles() []string
-	Next() ColumnViewer
-	Prev() ColumnViewer
 }
 
 // Aggregates several column views in one.
@@ -171,6 +164,23 @@ type ColumnViewMap map[string]ColumnViewer
 
 // Alias for @table.Column slice.
 type TableColumns []table.Column
+
+func (cols ColumnViewSlice) Map() ColumnViewMap {
+	// setup columns map by title
+	colsMap := make(ColumnViewMap, len(cols))
+	for _, col := range cols {
+		// consider swappable columns
+		if swapper, ok := col.(ColumnViewSwaper); ok {
+			for _, title := range swapper.Titles() {
+				colsMap[title] = col
+			}
+		} else {
+			colsMap[col.Title()] = col
+		}
+	}
+
+	return colsMap
+}
 
 // Returns @table.Column slice with applied sorting in title.
 func (cols ColumnViewSlice) SortBy(col ColumnViewer) TableColumns {
