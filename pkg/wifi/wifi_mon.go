@@ -77,11 +77,11 @@ func (mon *Monitor) Start(ctx context.Context) error {
 	// start serv inbound packets
 	for {
 		select {
-		case <-mon.ctx.Done():
-			log.Infof("stopping accepting inbound packets on %s", mon.iface.Name)
-			return nil
+		case packet, ok := <-packets:
+			if !ok {
+				return fmt.Errorf("packet source closed, stopping monitoring")
+			}
 
-		case packet := <-packets:
 			p := FromPacket(packet)
 			frame := p.DiscoverMgmtFrame()
 			if frame != nil {
@@ -92,8 +92,9 @@ func (mon *Monitor) Start(ctx context.Context) error {
 				// }
 			}
 
-		default:
-			continue
+		case <-mon.ctx.Done():
+			log.Infof("stopping accepting inbound packets on %s", mon.iface.Name)
+			return nil
 		}
 	}
 }

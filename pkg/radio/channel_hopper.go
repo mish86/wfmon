@@ -98,6 +98,8 @@ func (h *ChannelHopperServ) Start(ctx context.Context) error {
 // Shutdowns hopper service.
 func (h *ChannelHopperServ) Stop() error {
 	log.Infof("stopping Channel Hopper")
-	h.stop()
+	if h.stop != nil {
+		h.stop()
+	}
 	return nil
 }

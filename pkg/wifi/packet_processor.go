@@ -182,9 +182,15 @@ func (ie *InformationElements) discoverDSSetIE(dot11info *layers.Dot11Informatio
 	}
 }
 
-// Traverses packet and discovers a management frame that contains Information Elements.
-// If such frame found then discovers wifi frame as well.
+// Discovers wifi frame.
+// Then traverses packet and discovers a management frame that contains Information Elements.
 func (p *PacketDiscover) DiscoverMgmtFrame() *MgmtFrame {
+	var dot11 *Dot11Frame
+	if dot11 = p.DiscoverDot11Frame(); dot11 == nil {
+		// skip non wifi package
+		return nil
+	}
+
 	for _, discover := range []func() *MgmtFrame{
 		p.DiscoverMgmtBeaconFrame,
 		p.DiscoverMgmtProbeRespFrame,
@@ -192,9 +198,7 @@ func (p *PacketDiscover) DiscoverMgmtFrame() *MgmtFrame {
 		p.DiscoverMgmtReassociationRespFrame,
 	} {
 		if frame := discover(); frame != nil {
-			if dot11 := p.DiscoverDot11Frame(); dot11 != nil {
-				frame.Dot11Frame = *dot11
-			}
+			frame.Dot11Frame = *dot11
 
 			if ie := p.DiscoverIEs(); ie != nil {
 				frame.InformationElements = *ie

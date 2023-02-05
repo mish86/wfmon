@@ -2,6 +2,7 @@ package wifitable
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -68,15 +69,16 @@ func (c *TableCtrl) Start(ctx context.Context) error {
 
 	for {
 		select {
-		case <-c.ctx.Done():
-			return nil
+		case frame, ok := <-c.framesCh:
+			if !ok {
+				return fmt.Errorf("frames source closed, stopping updating table")
+			}
 
-		case frame := <-c.framesCh:
 			data := NetworkDataConverter(frame).NetworkData()
 			c.data.Add(data)
 
-		default:
-			continue
+		case <-c.ctx.Done():
+			return nil
 		}
 	}
 }
