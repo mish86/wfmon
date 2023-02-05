@@ -133,10 +133,6 @@ func (view *MultiColumnView) Titles() []string {
 	return names
 }
 
-// func (view *MultiColumnView) columns() []*ColumnView {
-// return view.cols
-// }
-
 // Returns 0 based column index.
 func (view *MultiColumnView) Index() int {
 	return view.cols[view.selected].Index()
@@ -204,6 +200,7 @@ func (cols ColumnViewSlice) TableColumns() TableColumns {
 	return columns
 }
 
+// Returns ColumnView or MultiColumnView as ColumnViewer interface.
 func NewColumnViewer(num int, cols ...table.Column) ColumnViewer {
 	if len(cols) > 1 {
 		return NewMultiColumnView(num, cols...)

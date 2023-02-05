@@ -57,7 +57,7 @@ func ColumnBand(num int) ColumnViewer {
 func ColumnSignal(num int) ColumnViewer {
 	//nolint:gomnd // ignore
 	return NewColumnViewer(num,
-		table.Column{Title: ColumnRSSITitle, Width: 5 + defaultSortingOrderWidth},
+		table.Column{Title: ColumnRSSITitle, Width: 4 + defaultSortingOrderWidth},
 		table.Column{Title: ColumnQualityTitle, Width: 7 + defaultSortingOrderWidth},
 		table.Column{Title: ColumnBarsTitle, Width: 4 + defaultSortingOrderWidth},
 	)
@@ -73,7 +73,7 @@ func ColumnNoise(num int) ColumnViewer {
 func ColumnSNR(num int) ColumnViewer {
 	//nolint:gomnd // ignore
 	return NewColumnViewer(num,
-		table.Column{Title: ColumnSNRTitle, Width: 5 + defaultSortingOrderWidth},
+		table.Column{Title: ColumnSNRTitle, Width: 4 + defaultSortingOrderWidth},
 	)
 }
 
@@ -87,4 +87,17 @@ func GenerateColumns(generators ...FncColumnGenerator) ColumnViewSlice {
 	}
 
 	return columns
+}
+
+func GenerateDefaultColumns() ColumnViewSlice {
+	return GenerateColumns(
+		ColumnSSID,
+		ColumnBSSID,
+		ColumnChan,
+		ColumnWidth,
+		ColumnBand,
+		ColumnSignal,
+		ColumnNoise,
+		ColumnSNR,
+	)
 }

@@ -20,36 +20,31 @@ func getDefaultViewportStyle() lipgloss.Style {
 
 // Returns default table styles.
 func getDefaultTableStyles() table.Styles {
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.Border{}).
-		BorderBottom(true).
-		Bold(false)
-	s.Cell = s.Cell.
-		BorderStyle(lipgloss.Border{})
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-
-	return s
+	// cell foreground overrides selected foreground, bug?
+	return table.Styles{
+		Header: lipgloss.NewStyle().
+			Bold(true).
+			Padding(0, 1, 0, 0), // keep space after column
+		Cell: lipgloss.NewStyle().
+			Bold(false).
+			Padding(0, 1, 0, 0), // keep space after column
+		Selected: lipgloss.NewStyle().
+			Bold(true).
+			Padding(0, 1, 0, 0). // keep space after column
+			Foreground(lipgloss.Color("229")).
+			Background(lipgloss.Color("57")),
+	}
 }
 
 // Returns default columns as slice and map.
 func getDefaultCols() (ColumnViewSlice, ColumnViewMap) {
-	cols := GenerateColumns(
-		ColumnSSID,
-		ColumnBSSID,
-		ColumnChan,
-		ColumnWidth,
-		ColumnBand,
-		ColumnSignal,
-		ColumnNoise,
-		ColumnSNR,
-	)
+	// setup default columns sequence
+	cols := GenerateDefaultColumns()
 
+	// setup columns map by title
 	colsMap := make(ColumnViewMap, len(cols))
 	for _, col := range cols {
+		// consider swappable columns
 		if swapper, ok := col.(ColumnSwapper); ok {
 			for _, title := range swapper.Titles() {
 				colsMap[title] = col
@@ -135,4 +130,8 @@ func (v *TableView) GetColumnByNum(num int) (ColumnViewer, bool) {
 func (v *TableView) GetColumnByTitle(title string) (ColumnViewer, bool) {
 	col, found := v.colsByNames[title]
 	return col, found
+}
+
+func (v *TableView) TableColumns() TableColumns {
+	return v.cols.TableColumns()
 }

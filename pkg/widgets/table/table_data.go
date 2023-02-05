@@ -89,8 +89,10 @@ type TableData struct {
 
 // Returns new networks table.
 func NewTableData() *TableData {
+	const defaultInitTableSize = 20
+
 	return &TableData{
-		table: make(NetworkTable),
+		table: make(NetworkTable, defaultInitTableSize),
 	}
 }
 
