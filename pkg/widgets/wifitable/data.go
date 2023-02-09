@@ -1,6 +1,7 @@
 package wifitable
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"wfmon/pkg/utils/cmp"
@@ -23,27 +24,27 @@ type NetworkData struct {
 }
 
 // Returns network data key.
-func (data *NetworkData) Key() *NetworkTableKey {
-	return NewNetworkTableKey(data.BSSID, data.NetworkName)
+func (data *NetworkData) Key() *NetworkKey {
+	return NewNetworkKey(data.BSSID, data.NetworkName)
 }
 
 // Network data uniq key in table.
 // Used for sorting in table.
-type NetworkTableKey struct {
+type NetworkKey struct {
 	BSSID       string
 	NetworkName string
 }
 
 // Returns new network data key.
-func NewNetworkTableKey(bssID, ssID string) *NetworkTableKey {
-	return &NetworkTableKey{
+func NewNetworkKey(bssID, ssID string) *NetworkKey {
+	return &NetworkKey{
 		BSSID:       bssID,
 		NetworkName: ssID,
 	}
 }
 
 // Compares network data keys.
-func (key *NetworkTableKey) Compare(other *NetworkTableKey) int {
+func (key *NetworkKey) Compare(other *NetworkKey) int {
 	var res int
 	switch {
 	case len(key.NetworkName) == 0 && len(other.NetworkName) == 0:
@@ -63,7 +64,7 @@ func (key *NetworkTableKey) Compare(other *NetworkTableKey) int {
 }
 
 // Network data map.
-type NetworkTable map[NetworkTableKey]*NetworkData
+type NetworkTable map[NetworkKey]*NetworkData
 
 // Network data slice.
 type NetworkSlice []NetworkData
@@ -82,32 +83,57 @@ func (t NetworkTable) Slice() NetworkSlice {
 }
 
 // Wraps networks table.
-type TableData struct {
+type DataSource struct {
 	table     NetworkTable
 	tableLock sync.RWMutex
+
+	ctx      context.Context
+	stop     context.CancelFunc
+	framesCh <-chan wifi.Frame
 }
 
 // Returns new networks table.
-func NewTableData() *TableData {
+func NewDataSource(framesCh <-chan wifi.Frame) *DataSource {
 	const defaultInitTableSize = 20
 
-	return &TableData{
-		table: make(NetworkTable, defaultInitTableSize),
+	return &DataSource{
+		table:    make(NetworkTable, defaultInitTableSize),
+		framesCh: framesCh,
+	}
+}
+
+// Starts processing incomming frames from packets.
+func (ds *DataSource) Start(ctx context.Context) error {
+	ds.ctx, ds.stop = context.WithCancel(ctx)
+
+	for {
+		select {
+		case frame, ok := <-ds.framesCh:
+			if !ok {
+				return fmt.Errorf("frames source closed, stopping updating table")
+			}
+
+			data := NetworkDataConverter(frame).NetworkData()
+			ds.Add(data)
+
+		case <-ds.ctx.Done():
+			return nil
+		}
 	}
 }
 
 // Appends or merges new data in networks table.
-func (t *TableData) Add(data *NetworkData) {
-	t.tableLock.Lock()
-	defer t.tableLock.Unlock()
+func (ds *DataSource) Add(data *NetworkData) {
+	ds.tableLock.Lock()
+	defer ds.tableLock.Unlock()
 
 	key := data.Key()
 
 	var thisData *NetworkData
 	var found bool
-	if thisData, found = t.table[*key]; !found {
+	if thisData, found = ds.table[*key]; !found {
 		// Copy data
-		t.table[*key] = data
+		ds.table[*key] = data
 
 		return
 	}
@@ -122,11 +148,11 @@ func (t *TableData) Add(data *NetworkData) {
 }
 
 // Returns network data slice.
-func (t *TableData) NetworkSlice() NetworkSlice {
-	t.tableLock.RLock()
-	defer t.tableLock.RUnlock()
+func (ds *DataSource) NetworkSlice() NetworkSlice {
+	ds.tableLock.RLock()
+	defer ds.tableLock.RUnlock()
 
-	return t.table.Slice()
+	return ds.table.Slice()
 }
 
 // Alias for network data converter.
@@ -207,25 +233,6 @@ func (c QualityConverter) SignalQuality() Quality {
 	}
 
 	return Quality(snrQuality)
-}
-
-// Returns bars presentation of signal quality.
-func (q Quality) Bars() string {
-	//nolint:gomnd // ignore
-	switch {
-	case q >= 80:
-		return "▂▄▆█"
-	case 60 <= q && q < 80:
-		return "▂▄▆_"
-	case 40 <= q && q < 60:
-		return "▂▄__"
-	case 20 <= q && q < 40:
-		return "▂___"
-	case q < 20:
-		return "____"
-	default:
-		return "____"
-	}
 }
 
 // Returns percent presentation of signal quality.

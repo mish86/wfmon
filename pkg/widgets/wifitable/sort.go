@@ -39,11 +39,20 @@ func (o Order) swap() Order {
 	return ASC
 }
 
-// Sorting definition.
+// Describes sorting order for a column and sorting function.
 type Sort struct {
-	title  string
+	key    string
 	ord    Order
 	sorter FncSorter
+}
+
+func SortBy(key string) func(ord Order) Sort {
+	sort := GenerateSorters(key)
+
+	return func(ord Order) Sort {
+		sort.ord = ord
+		return sort
+	}
 }
 
 // Change sorting order.
@@ -60,6 +69,10 @@ func (s *Sort) Sorter(networks NetworkSlice) sort.Interface {
 	return &Inverser{s.sorter(networks)}
 }
 
+func (s *Sort) Sort(networks NetworkSlice) {
+	sort.Sort(s.Sorter(networks))
+}
+
 // Returns sorting order.
 func (s *Sort) Order() Order {
 	return s.ord
@@ -71,8 +84,8 @@ func (s *Sort) SetOrder(ord Order) {
 }
 
 // Returns column title.
-func (s *Sort) Title() string {
-	return s.title
+func (s *Sort) Key() string {
+	return s.key
 }
 
 // Inverses resul of @sort.Interface.Less.

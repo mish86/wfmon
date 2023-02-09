@@ -5,6 +5,12 @@ import (
 	"net"
 )
 
+type Network struct {
+	SSID    string
+	BSSID   string
+	Channel uint8
+}
+
 func InterfaceByName(name string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {

@@ -11,9 +11,10 @@ import (
 	"time"
 	mode "wfmon/pkg"
 	log "wfmon/pkg/logger"
+	"wfmon/pkg/network"
 	"wfmon/pkg/radio"
 	"wfmon/pkg/serv"
-	wifitable "wfmon/pkg/widgets/table"
+	wifitable "wfmon/pkg/widgets/wifitable"
 	"wfmon/pkg/wifi"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -33,11 +34,12 @@ type Application struct {
 	shutdowners []serv.Shutdowner
 	program     *tea.Program
 
-	mode          mode.Mode
-	gsTimeout     time.Duration
-	chHopInterval time.Duration
-	ifaceName     string
-	iface         *net.Interface
+	mode              mode.Mode
+	gsTimeout         time.Duration
+	chHopInterval     time.Duration
+	ifaceName         string
+	iface             *net.Interface
+	associatedNetwork network.Network
 }
 
 func loadApplication() *Application {
@@ -87,6 +89,16 @@ func (app *Application) findInterface() error {
 	return nil
 }
 
+func (app *Application) findAssociatedNetwork() error {
+	var err error
+
+	if app.associatedNetwork, err = network.GetAssociatedNetwork(app.ifaceName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Stops and closes services within @app.gsTimeout timeout.
 func (app *Application) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), app.gsTimeout)
@@ -130,6 +142,11 @@ func (app *Application) init(ctx context.Context) {
 		log.Fatal(err)
 	}
 
+	// find current network associated with given iface
+	if err := app.findAssociatedNetwork(); err != nil {
+		log.Fatal(err)
+	}
+
 	// create wifi monitor
 	mon := wifi.NewMonitor(&wifi.Config{
 		IFace: app.iface,
@@ -142,11 +159,13 @@ func (app *Application) init(ctx context.Context) {
 	})
 
 	// create table controller
-	table := wifitable.NewTableCtrl(mon.GetFrames())
+	// table := wifitable.NewTableCtrl(mon.GetFrames())
+	dataSource := wifitable.NewDataSource(mon.GetFrames())
+	table := wifitable.NewTable(dataSource, app.associatedNetwork)
 
 	// setup services
 	app.servs = []serv.Serv{mon, hopper}
-	app.starters = []serv.Starter{mon, hopper, table}
+	app.starters = []serv.Starter{mon, hopper, dataSource}
 	app.shutdowners = []serv.Shutdowner{mon, hopper}
 
 	// run configurations
@@ -162,6 +181,7 @@ func (app *Application) init(ctx context.Context) {
 		table,
 		tea.WithContext(ctx),
 		tea.WithInputTTY(),
+		tea.WithAltScreen(),
 	)
 }
 
