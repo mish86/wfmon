@@ -7,6 +7,10 @@ import (
 
 type KeyMap struct {
 	table.KeyMap
+	RowUp      key.Binding
+	RowDown    key.Binding
+	GotoTop    key.Binding
+	GotoBottom key.Binding
 	SignalView key.Binding
 	BSSIDView  key.Binding
 	Sort       key.Binding
@@ -18,14 +22,6 @@ type KeyMap struct {
 func NewKeyMap() KeyMap {
 	return KeyMap{
 		KeyMap: table.KeyMap{
-			RowUp: key.NewBinding(
-				key.WithKeys("up", "k"),
-				key.WithHelp("↑/k", "up"),
-			),
-			RowDown: key.NewBinding(
-				key.WithKeys("down", "j"),
-				key.WithHelp("↓/j", "down"),
-			),
 			PageUp: key.NewBinding(
 				key.WithKeys("left", "b", "pgup"),
 				key.WithHelp("←/b/pgup", "page up"),
@@ -34,15 +30,23 @@ func NewKeyMap() KeyMap {
 				key.WithKeys("right", "f", "pgdown"),
 				key.WithHelp("→/f/pgdown", "page down"),
 			),
-			PageFirst: key.NewBinding(
-				key.WithKeys("home", "g"),
-				key.WithHelp("g/home", "go to start"),
-			),
-			PageLast: key.NewBinding(
-				key.WithKeys("end", "G"),
-				key.WithHelp("G/end", "go to end"),
-			),
 		},
+		GotoTop: key.NewBinding(
+			key.WithKeys("home", "g"),
+			key.WithHelp("g/home", "go to start"),
+		),
+		GotoBottom: key.NewBinding(
+			key.WithKeys("end", "G"),
+			key.WithHelp("G/end", "go to end"),
+		),
+		RowUp: key.NewBinding(
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "up"),
+		),
+		RowDown: key.NewBinding(
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "down"),
+		),
 		BSSIDView: key.NewBinding(
 			key.WithKeys("ctrl+@"),
 			key.WithHelp("ctrl+@", "swap BSSID/Vendor"),
@@ -71,7 +75,7 @@ func NewKeyMap() KeyMap {
 }
 
 func (k *KeyMap) MoveBindings() []key.Binding {
-	return []key.Binding{k.RowUp, k.RowDown, k.PageUp, k.PageDown, k.PageFirst, k.PageLast}
+	return []key.Binding{k.RowUp, k.RowDown, k.PageUp, k.PageDown, k.GotoTop, k.GotoBottom}
 }
 
 func (k *KeyMap) ShortHelp() []key.Binding {
