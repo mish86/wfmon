@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"wfmon/pkg/manuf" //nolint
 	"wfmon/pkg/utils/cmp"
 	"wfmon/pkg/wifi"
 )
@@ -11,6 +12,8 @@ import (
 // Aggragated network data.
 type NetworkData struct {
 	BSSID        string
+	Manuf        string // Short vendor' name
+	ManufLong    string // Long vendor' name
 	NetworkName  string
 	Channel      uint8
 	ChannelWidth uint16
@@ -139,6 +142,7 @@ func (ds *DataSource) Add(data *NetworkData) {
 	}
 
 	// merge network with existing
+	thisData.Manuf = data.Manuf
 	thisData.Channel = data.Channel
 	thisData.ChannelWidth = data.ChannelWidth
 	thisData.Band = data.Band
@@ -169,6 +173,7 @@ func (frame NetworkDataConverter) NetworkData() *NetworkData {
 		SNR:         frame.RSSI - frame.Noise,
 	}
 
+	data.Manuf, data.ManufLong = manuf.Lookup(frame.BSSID.String())
 	data.Quality = QualityConverter{data.RSSI, data.SNR}.SignalQuality()
 	data.Band = wifi.GetBandByChan(frame.Channel)
 	data.ChannelWidth = wifi.GetBondingWidth(frame.Channel, frame.SecondaryChannelOffset)

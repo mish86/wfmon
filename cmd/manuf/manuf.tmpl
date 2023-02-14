@@ -1,0 +1,35 @@
+{{ `//go:build !codeanalysis` }}
+{{ `// This file was generated. Don't change it directly.` }}
+{{ "package manuf" }}
+
+{{ `import (
+	net "wfmon/pkg/network/mac"
+)` }}
+
+{{ `var manuf = map[string][2]string {` }}
+    {{ range $key, $val := . }}"{{ $key }}": { {{ range $val }}`{{ . }}`, {{ end }}},
+    {{ end }}
+{{ `}` }}
+
+{{ `// Searches vendor of station by given hardware address.` }}
+{{ `// Returns short (truncated to 8 characters) and long vendor' names.` }}
+{{ `// Supports IEEE 802 MAC-48 only.` }}
+{{ `// ref. https://gitlab.com/wireshark/wireshark/-/raw/master/manuf.` }}
+{{ `func Lookup(mac string) (string, string) {
+	addr := new(net.HardwareAddr).WithAddr(mac)
+
+	for ; addr != nil; addr = addr.Parent() {
+		key := net.WildcardDotBigInt(*addr).String()
+		if vendor, found := manuf[key]; found {
+			short := vendor[0]
+			long := ""
+			if len(vendor) > 1 {
+				long = vendor[1]
+			}
+			return short, long
+		}
+	}
+
+	return "", ""
+}
+` }}

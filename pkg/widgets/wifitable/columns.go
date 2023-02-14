@@ -9,21 +9,84 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
+	"golang.org/x/exp/constraints"
 )
 
 const (
-	ColumnSSIDKey    = "Network"
-	ColumnBSSIDKey   = "BSSID"
-	ColumnChanKey    = "Chan"
-	ColumnWidthKey   = "Width"
-	ColumnBandKey    = "Band"
-	ColumnRSSIKey    = "RSSI"
-	ColumnQualityKey = "Quality"
-	ColumnBarsKey    = "Bars"
-	ColumnNoiseKey   = "Noise"
-	ColumnSNRKey     = "SNR"
+	ColumnSSIDKey      = "Network"
+	ColumnBSSIDKey     = "BSSID"
+	ColumnManufKey     = "Manuf"
+	ColumnManufLongKey = "Manufactor"
+	ColumnChanKey      = "Chan"
+	ColumnWidthKey     = "Width"
+	ColumnBandKey      = "Band"
+	ColumnRSSIKey      = "RSSI"
+	ColumnQualityKey   = "Quality"
+	ColumnBarsKey      = "Bars"
+	ColumnNoiseKey     = "Noise"
+	ColumnSNRKey       = "SNR"
 )
 
+// Provides cycling of view for multi column viewers.
+type Cycler[T constraints.Integer] interface {
+	Next() Cycler[T]
+	Current() T
+	Prev() Cycler[T]
+}
+
+type defaultCycler[T constraints.Integer] struct {
+	start, current, end T
+}
+
+func (c *defaultCycler[T]) Next() Cycler[T] {
+	c.current++
+	if c.current > c.end {
+		c.current = c.start
+	}
+
+	return c
+}
+
+func (c *defaultCycler[T]) Current() T {
+	return c.current
+}
+
+func (c *defaultCycler[T]) Prev() Cycler[T] {
+	c.current--
+	if c.current < c.start {
+		c.current = c.end
+	}
+
+	return c
+}
+
+func Cycle[T constraints.Integer](start, current, end T) Cycler[T] {
+	return &defaultCycler[T]{
+		start:   start,
+		current: current,
+		end:     end,
+	}
+}
+
+// Provides all keys supproted by multi column viewer.
+type Enumerator interface {
+	Keys() []string
+}
+
+// Provides key presentation for current state of multi column viewer.
+type Keyer interface {
+	Enumerator
+	Key() string
+}
+
+// Generates @table.Column depending on current state of multi column viewer.
+type MultiViewColumnGenerator interface {
+	Enumerator
+	Column(widths map[string]int, sort Sort) func() table.Column
+}
+
+// Multi column viewer for signal.
+// Supports RSSI, Quality, Bars.
 type SignalViewMode uint8
 
 const (
@@ -32,22 +95,16 @@ const (
 	BarsViewMode
 )
 
-func (v SignalViewMode) Next() SignalViewMode {
-	mode := uint8(v) + 1
-	if mode > uint8(BarsViewMode) {
-		mode = uint8(RSSIViewMode)
+func (v SignalViewMode) Keys() []string {
+	return []string{
+		ColumnRSSIKey,
+		ColumnQualityKey,
+		ColumnBarsKey,
 	}
-
-	return SignalViewMode(mode)
 }
 
-func (v SignalViewMode) Prev() SignalViewMode {
-	mode := uint8(v) - 1
-	if mode > uint8(RSSIViewMode) {
-		mode = uint8(BarsViewMode)
-	}
-
-	return SignalViewMode(mode)
+func (v SignalViewMode) Cycle() Cycler[SignalViewMode] {
+	return Cycle(RSSIViewMode, v, BarsViewMode)
 }
 
 func (v SignalViewMode) Key() string {
@@ -78,11 +135,66 @@ func (v SignalViewMode) Column(widths map[string]int, sort Sort) func() table.Co
 	}
 }
 
-// Returns columns keys.
+// Multi column viewer for station.
+// Supports BSSID, Manuf, Manufactor.
+type StationViewMode uint8
+
+const (
+	BSSIDViewMode StationViewMode = iota
+	ManufViewMode
+	ManufLongViewMode
+)
+
+func (v StationViewMode) Keys() []string {
+	return []string{
+		ColumnBSSIDKey,
+		ColumnManufKey,
+		ColumnManufLongKey,
+	}
+}
+
+func (v StationViewMode) Cycle() Cycler[StationViewMode] {
+	return Cycle(BSSIDViewMode, v, ManufLongViewMode)
+}
+
+func (v StationViewMode) Key() string {
+	switch v {
+	case BSSIDViewMode:
+		return ColumnBSSIDKey
+	case ManufViewMode:
+		return ColumnManufKey
+	case ManufLongViewMode:
+		return ColumnManufLongKey
+	default:
+		return ColumnBSSIDKey
+	}
+}
+
+func (v StationViewMode) Column(widths map[string]int, sort Sort) func() table.Column {
+	style := lipgloss.NewStyle().
+		Align(lipgloss.Left).
+		PaddingLeft(1)
+	return func() table.Column {
+		switch v {
+		case BSSIDViewMode:
+			return newColumn(widths, sort)(ColumnBSSIDKey).WithStyle(style)
+		case ManufViewMode:
+			return newColumn(widths, sort)(ColumnManufKey).WithStyle(style)
+		case ManufLongViewMode:
+			return newColumn(widths, sort)(ColumnManufLongKey).WithStyle(style)
+		default:
+			return newColumn(widths, sort)(ColumnBSSIDKey).WithStyle(style)
+		}
+	}
+}
+
+// Returns all registered columns keys.
 func ColumnsKeys() []string {
 	return []string{
 		ColumnSSIDKey,
 		ColumnBSSIDKey,
+		ColumnManufKey,
+		ColumnManufLongKey,
 		ColumnChanKey,
 		ColumnWidthKey,
 		ColumnBandKey,
@@ -94,10 +206,27 @@ func ColumnsKeys() []string {
 	}
 }
 
-func VisibleColumnsKeys(signal SignalViewMode) []string {
+// Returns visible columns.
+// Keyers required for multiview columns. The proper one selected by key columns.
+// Supoprted multi columns viewers:
+// - station: BSSID (Default), Manuf, Manufactor
+// - signal RSSI (Default), Quality, Bars
+func VisibleColumnsKeys(enums ...Keyer) []string {
+	var station Keyer = BSSIDViewMode
+	var signal Keyer = RSSIViewMode
+
+	for _, enum := range enums {
+		switch enum.(type) {
+		case StationViewMode:
+			station = enum
+		case SignalViewMode:
+			signal = enum
+		}
+	}
+
 	return []string{
 		ColumnSSIDKey,
-		ColumnBSSIDKey,
+		station.Key(),
 		ColumnChanKey,
 		ColumnWidthKey,
 		ColumnBandKey,
@@ -107,22 +236,26 @@ func VisibleColumnsKeys(signal SignalViewMode) []string {
 	}
 }
 
+// Returns predefined columns width
 func columnsWidth() map[string]int {
 	//nolint:gomnd // ignore
 	return map[string]int{
-		ColumnSSIDKey:    20,
-		ColumnBSSIDKey:   20,
-		ColumnChanKey:    7,
-		ColumnWidthKey:   8,
-		ColumnBandKey:    7,
-		ColumnRSSIKey:    7,
-		ColumnQualityKey: 10,
-		ColumnBarsKey:    7,
-		ColumnNoiseKey:   8,
-		ColumnSNRKey:     5,
+		ColumnSSIDKey:      20,
+		ColumnBSSIDKey:     20,
+		ColumnManufKey:     10,
+		ColumnManufLongKey: 20,
+		ColumnChanKey:      7,
+		ColumnWidthKey:     8,
+		ColumnBandKey:      7,
+		ColumnRSSIKey:      7,
+		ColumnQualityKey:   10,
+		ColumnBarsKey:      7,
+		ColumnNoiseKey:     8,
+		ColumnSNRKey:       5,
 	}
 }
 
+// Returns @table.Column with applied sorting in title and width.
 func newColumn(widths map[string]int, sort Sort) func(key string) table.Column {
 	return func(key string) table.Column {
 		title := key
@@ -134,17 +267,23 @@ func newColumn(widths map[string]int, sort Sort) func(key string) table.Column {
 }
 
 // Returns default columns.
-func GenerateColumns(modes ...any) []table.Column {
+// Multiview column viewers can be passed in any order. The proper one selected by key columns.
+// Supoprted multi columns viewers:
+// - station: BSSID (Default), Manuf, Manufactor
+// - signal RSSI (Default), Quality, Bars
+func GenerateColumns(sort Sort, enums ...MultiViewColumnGenerator) []table.Column {
 	widths := columnsWidth()
 
-	sort := SortBy(ColumnSSIDKey)(None)
-	if len(modes) > 0 {
-		sort, _ = modes[0].(Sort)
-	}
+	var station MultiViewColumnGenerator = BSSIDViewMode
+	var signal MultiViewColumnGenerator = RSSIViewMode
 
-	signal := RSSIViewMode
-	if len(modes) > 1 {
-		signal = SignalViewMode(modes[1].(uint8))
+	for _, enum := range enums {
+		switch enum.(type) {
+		case StationViewMode:
+			station = enum
+		case SignalViewMode:
+			signal = enum
+		}
 	}
 
 	return []table.Column{
@@ -152,11 +291,7 @@ func GenerateColumns(modes ...any) []table.Column {
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
 		),
-		newColumn(widths, sort)(ColumnBSSIDKey).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left).
-				PaddingLeft(1),
-		),
+		station.Column(widths, sort)(),
 		newColumn(widths, sort)(ColumnChanKey),
 		newColumn(widths, sort)(ColumnWidthKey),
 		newColumn(widths, sort)(ColumnBandKey),
@@ -178,6 +313,14 @@ func GenerateSorters(column string) Sort {
 		},
 		ColumnBSSIDKey: {
 			key:    ColumnBSSIDKey,
+			sorter: ByBSSIDSorter(),
+		},
+		ColumnManufKey: {
+			key:    ColumnManufKey,
+			sorter: ByBSSIDSorter(),
+		},
+		ColumnManufLongKey: {
+			key:    ColumnManufLongKey,
 			sorter: ByBSSIDSorter(),
 		},
 		ColumnChanKey: {
@@ -251,6 +394,14 @@ func GenerateCellViewers(associated *NetworkKey) map[any]FncCellViewer {
 		ColumnBSSIDKey: func(data *NetworkData) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
 			return table.NewStyledCell(data.BSSID, style)
+		},
+		ColumnManufKey: func(data *NetworkData) any {
+			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
+			return table.NewStyledCell(data.Manuf, style)
+		},
+		ColumnManufLongKey: func(data *NetworkData) any {
+			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
+			return table.NewStyledCell(data.ManufLong, style)
 		},
 		ColumnChanKey: func(data *NetworkData) any {
 			style := associatedStyle(data)

@@ -10,6 +10,8 @@ run:
   # Timeout for analysis, e.g. 30s, 5m.
   # Default: 1m
   timeout: 3m
+  build-tags:
+    - codeanalysis
 
 
 # This file contains only configs which differ from defaults.

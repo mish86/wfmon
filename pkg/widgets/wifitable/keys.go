@@ -7,16 +7,16 @@ import (
 
 type KeyMap struct {
 	table.KeyMap
-	RowUp      key.Binding
-	RowDown    key.Binding
-	GotoTop    key.Binding
-	GotoBottom key.Binding
-	SignalView key.Binding
-	BSSIDView  key.Binding
-	Sort       key.Binding
-	ResetSort  key.Binding
-	Help       key.Binding
-	Quit       key.Binding
+	RowUp       key.Binding
+	RowDown     key.Binding
+	GotoTop     key.Binding
+	GotoBottom  key.Binding
+	SignalView  key.Binding
+	StationView key.Binding
+	Sort        key.Binding
+	Reset       key.Binding
+	Help        key.Binding
+	Quit        key.Binding
 }
 
 func NewKeyMap() KeyMap {
@@ -47,7 +47,7 @@ func NewKeyMap() KeyMap {
 			key.WithKeys("down", "j"),
 			key.WithHelp("↓/j", "down"),
 		),
-		BSSIDView: key.NewBinding(
+		StationView: key.NewBinding(
 			key.WithKeys("ctrl+@"),
 			key.WithHelp("ctrl+@", "swap BSSID/Vendor"),
 		),
@@ -59,9 +59,9 @@ func NewKeyMap() KeyMap {
 			key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8"),
 			key.WithHelp("[1:8]", "sort"),
 		),
-		ResetSort: key.NewBinding(
+		Reset: key.NewBinding(
 			key.WithKeys("0"),
-			key.WithHelp("0", "reset sort"),
+			key.WithHelp("0", "reset view"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("h", "?"),
@@ -79,13 +79,13 @@ func (k *KeyMap) MoveBindings() []key.Binding {
 }
 
 func (k *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Sort, k.ResetSort, k.BSSIDView, k.SignalView, k.Help, k.Quit}
+	return []key.Binding{k.Sort, k.Reset, k.StationView, k.SignalView, k.Help, k.Quit}
 }
 
 func (k *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		k.MoveBindings(),
-		{k.Sort, k.ResetSort, k.BSSIDView, k.SignalView},
+		{k.Sort, k.Reset, k.StationView, k.SignalView},
 		{k.Help, k.Quit},
 	}
 }

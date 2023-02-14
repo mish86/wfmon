@@ -35,12 +35,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.gotoBottom()
 
 		case key.Matches(msg, m.keys.SignalView):
+			prevKey := m.signalViewMode.Current().Key()
 			m.signalViewMode = m.signalViewMode.Next()
-			m.sort = SortBy(m.signalViewMode.Key())(m.sort.ord)
+			if m.sort.key == prevKey {
+				m.sort = SortBy(m.signalViewMode.Current().Key())(m.sort.ord)
+			}
 			m.refresh()
 
-		case key.Matches(msg, m.keys.ResetSort):
-			m.signalViewMode, m.sort = defaultViewMode()
+		case key.Matches(msg, m.keys.StationView):
+			prevKey := m.stationViewMode.Current().Key()
+			m.stationViewMode = m.stationViewMode.Next()
+			if m.sort.key == prevKey {
+				m.sort = SortBy(m.stationViewMode.Current().Key())(m.sort.ord)
+			}
+			m.refresh()
+
+		case key.Matches(msg, m.keys.Reset):
+			m.sort, m.signalViewMode, m.stationViewMode = defaultViewMode()
 			m.refresh()
 
 		case key.Matches(msg, m.keys.Sort):
@@ -107,7 +118,10 @@ func (m *Model) sortBy(msg tea.KeyMsg) bool {
 	}
 
 	idx = num - 1
-	keys := VisibleColumnsKeys(m.signalViewMode)
+	keys := VisibleColumnsKeys(
+		m.stationViewMode.Current(),
+		m.signalViewMode.Current(),
+	)
 	if idx < 0 || idx >= len(keys) {
 		log.Warnf("unsupported sort key, %d", num)
 		return false

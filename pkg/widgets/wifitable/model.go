@@ -26,7 +26,8 @@ var (
 type Model struct {
 	table           table.Model
 	sort            Sort
-	signalViewMode  SignalViewMode
+	stationViewMode Cycler[StationViewMode]
+	signalViewMode  Cycler[SignalViewMode]
 	dataSource      *DataSource
 	networks        NetworkSlice
 	associated      *NetworkKey
@@ -36,16 +37,18 @@ type Model struct {
 	helpShown       bool
 }
 
-func defaultViewMode() (SignalViewMode, Sort) {
-	return BarsViewMode, SortBy(ColumnBarsKey)(DESC)
+func defaultViewMode() (Sort, Cycler[SignalViewMode], Cycler[StationViewMode]) {
+	return SortBy(ColumnBarsKey)(DESC),
+		BarsViewMode.Cycle(),
+		BSSIDViewMode.Cycle()
 }
 
 func NewTable(ds *DataSource, network network.Network) *Model {
 	help := help.New()
 	help.ShowAll = true
 
-	signalViewMode, sort := defaultViewMode()
-	columns := GenerateColumns(sort, uint8(signalViewMode))
+	sort, signalViewMode, stationViewMode := defaultViewMode()
+	columns := GenerateColumns(sort, signalViewMode.Current())
 
 	keys := NewKeyMap()
 	t := table.New(columns).
@@ -59,14 +62,15 @@ func NewTable(ds *DataSource, network network.Network) *Model {
 		Focused(true)
 
 	return &Model{
-		table:          t,
-		keys:           keys,
-		help:           help,
-		signalViewMode: signalViewMode,
-		sort:           sort,
-		dataSource:     ds,
-		networks:       NetworkSlice{},
-		associated:     NewNetworkKey(network.BSSID, network.SSID),
+		table:           t,
+		keys:            keys,
+		help:            help,
+		stationViewMode: stationViewMode,
+		signalViewMode:  signalViewMode,
+		sort:            sort,
+		dataSource:      ds,
+		networks:        NetworkSlice{},
+		associated:      NewNetworkKey(network.BSSID, network.SSID),
 	}
 }
 
@@ -94,7 +98,7 @@ func (m *Model) View() string {
 func (m *Model) refresh() {
 	m.table = m.table.
 		WithRows(getRows(m.networks, m.associated)).
-		WithColumns(GenerateColumns(m.sort, uint8(m.signalViewMode)))
+		WithColumns(GenerateColumns(m.sort, m.stationViewMode.Current(), m.signalViewMode.Current()))
 }
 
 // Returns sorted rows to redraw tick.

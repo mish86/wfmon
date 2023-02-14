@@ -6,18 +6,25 @@ GOBASE		= $(shell pwd)
 GOBIN		= $(GOBASE)/bin
 GOMAIN		= ${GOBASE}/cmd/main.go
 GOPKG		= ${GOBASE}/pkg
+GOMANUF     = ${GOBASE}/cmd/manuf/main.go
+GOMANUFDIR  = ${GOBASE}/cmd/manuf/
+GOMANUFOUT  = ${GOBASE}/pkg/manuf/manuf.go
 
 ## build: Build binary files.
-build: clean
+build: clean gen
 # MacOS
 	GOOS="darwin" go build -race -o $(GOBIN)/$(PROJECTNAME) ${GOMAIN}
 
-## run: Run
+## run: Run.
 run:
 	$(eval -include .env)
 	$(eval export)
 # env
 	go run -race ${GOMAIN}
+
+## gen: Generate code.
+gen:
+	go run ${GOMANUF} -- ${GOMANUFDIR} ${GOMANUFOUT}
 
 ## clean: Clean build files.
 clean:

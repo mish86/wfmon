@@ -136,6 +136,16 @@ func ByBSSIDSorter() FncSorter {
 	return Sorter(func(n NetworkSlice, i int) string { return n[i].BSSID })
 }
 
+// Sort by station manufacture short name asc.
+func ByManufSorter() FncSorter {
+	return Sorter(func(n NetworkSlice, i int) string { return n[i].Manuf })
+}
+
+// Sort by station manufacture full name asc.
+func ByManufLongSorter() FncSorter {
+	return Sorter(func(n NetworkSlice, i int) string { return n[i].ManufLong })
+}
+
 // Sort by SSID asc.
 // Sorts only by network table key.
 type BySSIDSorter NetworkSlice
