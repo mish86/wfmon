@@ -317,11 +317,11 @@ func GenerateSorters(column string) Sort {
 		},
 		ColumnManufKey: {
 			key:    ColumnManufKey,
-			sorter: ByBSSIDSorter(),
+			sorter: ByManufSorter(),
 		},
 		ColumnManufLongKey: {
 			key:    ColumnManufLongKey,
-			sorter: ByBSSIDSorter(),
+			sorter: ByManufLongSorter(),
 		},
 		ColumnChanKey: {
 			key:    ColumnChanKey,
