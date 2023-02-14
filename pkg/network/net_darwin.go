@@ -14,14 +14,13 @@ const airPortPath = "/System/Library/PrivateFrameworks/Apple80211.framework/Vers
 
 var (
 	channelFrequencyRegex = regexp.MustCompile(`^(\d{1,3})\s\([2,5]GHz\)$`)
-	bssIDRegex            = regexp.MustCompile(`\s+BSSID:\s(([A-Fa-f0-9]{2}[:-]?){6})`)
+	bssIDRegex            = regexp.MustCompile(`BSSID:\s((?:[A-Fa-f0-9]{2}[\.:\-]){5}[A-Fa-f0-9]{2})`)
 	ssIDRegex             = regexp.MustCompile(`\s+SSID:\s(.*)`)
 	channelRegex          = regexp.MustCompile(`\s+channel:\s(\d{1,3})`)
 )
 
 const (
 	numGroups2 = 2
-	numGroups3 = 3
 )
 
 type systemProfiler struct {
@@ -128,18 +127,18 @@ func getAssociatedNetworkAirport() (Network, error) {
 	output := string(raw)
 
 	bssIDA := bssIDRegex.FindStringSubmatch(output)
-	if len(bssIDA) != numGroups3 {
-		return Network{}, fmt.Errorf("failed to parse BSSID '%s', expected pattern'%s'", output, bssIDRegex)
+	if len(bssIDA) != numGroups2 {
+		return Network{}, fmt.Errorf("failed to parse BSSID '%s', expected pattern '%s'", output, bssIDRegex)
 	}
 
 	ssIDA := ssIDRegex.FindStringSubmatch(output)
 	if len(ssIDA) != numGroups2 {
-		return Network{}, fmt.Errorf("failed to parse SSID '%s', expected pattern'%s'", output, ssIDRegex)
+		return Network{}, fmt.Errorf("failed to parse SSID '%s', expected pattern '%s'", output, ssIDRegex)
 	}
 
 	chA := channelRegex.FindStringSubmatch(output)
 	if len(chA) != numGroups2 {
-		return Network{}, fmt.Errorf("failed to parse channel '%s', expected pattern'%s'", output, channelRegex)
+		return Network{}, fmt.Errorf("failed to parse channel '%s', expected pattern '%s'", output, channelRegex)
 	}
 
 	var chI int

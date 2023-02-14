@@ -243,7 +243,7 @@ func columnsWidth() map[string]int {
 		ColumnSSIDKey:      20,
 		ColumnBSSIDKey:     20,
 		ColumnManufKey:     10,
-		ColumnManufLongKey: 20,
+		ColumnManufLongKey: 30,
 		ColumnChanKey:      7,
 		ColumnWidthKey:     8,
 		ColumnBandKey:      7,
