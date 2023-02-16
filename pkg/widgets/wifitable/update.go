@@ -71,7 +71,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onRefreshMsg(msg)
 
 		// schedule next refresh tick
-		cmds = append(cmds, refreshTick(m.dataSource, m.refreshInterval))
+		cmds = append(cmds, refreshTick(m.dataSource, defaultRefreshInterval))
 	}
 
 	return m, tea.Batch(cmds...)

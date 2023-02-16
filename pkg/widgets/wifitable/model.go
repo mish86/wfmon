@@ -31,7 +31,6 @@ type Model struct {
 	dataSource      *DataSource
 	networks        NetworkSlice
 	associated      *NetworkKey
-	refreshInterval time.Duration
 	keys            KeyMap
 	help            help.Model
 	helpShown       bool
@@ -76,7 +75,7 @@ func NewTable(ds *DataSource, network network.Network) *Model {
 
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(
-		refreshTick(m.dataSource, m.refreshInterval),
+		refreshTick(m.dataSource, defaultRefreshInterval),
 	)
 }
 
