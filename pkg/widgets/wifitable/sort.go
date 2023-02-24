@@ -2,6 +2,7 @@ package wifitable
 
 import (
 	"sort"
+	netdata "wfmon/pkg/data/net"
 	"wfmon/pkg/utils/cmp"
 
 	"golang.org/x/exp/constraints"
@@ -61,7 +62,7 @@ func (s *Sort) SwapOrder() {
 }
 
 // Returns @sort.Interface depending on order value.
-func (s *Sort) Sorter(networks NetworkSlice) sort.Interface {
+func (s *Sort) Sorter(networks netdata.Slice) sort.Interface {
 	if s.ord == ASC || s.ord == None {
 		return s.sorter(networks)
 	}
@@ -69,7 +70,7 @@ func (s *Sort) Sorter(networks NetworkSlice) sort.Interface {
 	return &Inverser{s.sorter(networks)}
 }
 
-func (s *Sort) Sort(networks NetworkSlice) {
+func (s *Sort) Sort(networks netdata.Slice) {
 	sort.Sort(s.Sorter(networks))
 }
 
@@ -99,7 +100,7 @@ func (a Inverser) Less(i, j int) bool {
 }
 
 // Wraps NetworkSlice with @sort.Interface.
-type FncSorter func(networks NetworkSlice) sort.Interface
+type FncSorter func(networks netdata.Slice) sort.Interface
 
 // Implements default sorter behaviour for all columns.
 type DefaultSorter struct {
@@ -109,8 +110,8 @@ type DefaultSorter struct {
 }
 
 // Takes an implementation of getter and returns sorter as high order func.
-func Sorter[T constraints.Ordered](fncGet func(n NetworkSlice, i int) T) FncSorter {
-	return func(n NetworkSlice) sort.Interface {
+func Sorter[T constraints.Ordered](fncGet func(n netdata.Slice, i int) T) FncSorter {
+	return func(n netdata.Slice) sort.Interface {
 		return &DefaultSorter{
 			len:  func() int { return len(n) },
 			swap: func(i, j int) { n[i], n[j] = n[j], n[i] },
@@ -133,63 +134,60 @@ func (s DefaultSorter) Less(i, j int) bool { return s.less(i, j) }
 
 // Sort by BSSID asc.
 func ByBSSIDSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) string { return n[i].BSSID })
+	return Sorter(func(n netdata.Slice, i int) string { return n[i].BSSID })
 }
 
 // Sort by station manufacture short name asc.
 func ByManufSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) string { return n[i].Manuf })
+	return Sorter(func(n netdata.Slice, i int) string { return n[i].Manuf })
 }
 
 // Sort by station manufacture full name asc.
 func ByManufLongSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) string { return n[i].ManufLong })
+	return Sorter(func(n netdata.Slice, i int) string { return n[i].ManufLong })
 }
 
-// Sort by SSID asc.
-// Sorts only by network table key.
-type BySSIDSorter NetworkSlice
-
-func (a BySSIDSorter) Len() int           { return len(a) }
-func (a BySSIDSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a BySSIDSorter) Less(i, j int) bool { return a[i].Key().Compare(a[j].Key()) < 0 }
+// Sort by station manufacture full name asc.
+func BySSIDSorter() FncSorter {
+	return Sorter(func(n netdata.Slice, i int) string { return n[i].NetworkName })
+}
 
 // Sort by Channel asc.
 func ByChannelSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Channel) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].Channel) })
 }
 
 // Sort by Channel Width asc.
 func ByChannelWidthSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].ChannelWidth) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].ChannelWidth) })
 }
 
 // Sort by Bandwidth asc.
 func ByBandwidthSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Band) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].Band) })
 }
 
 // Sort by RSSI asc.
 func ByRSSISorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].RSSI) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].RSSI) })
 }
 
 // Sort by Quality asc.
 func ByQualitySorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Quality) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].Quality) })
 }
 
 // Sort by Quality/Bars asc.
 func ByBarsSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Quality) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].Quality) })
 }
 
 // Sort by Noise asc.
 func ByNoiseSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].Noise) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].Noise) })
 }
 
 // Sort by SNR asc.
 func BySNRSorter() FncSorter {
-	return Sorter(func(n NetworkSlice, i int) int { return int(n[i].SNR) })
+	return Sorter(func(n netdata.Slice, i int) int { return int(n[i].SNR) })
 }

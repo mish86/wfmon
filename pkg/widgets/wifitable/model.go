@@ -1,12 +1,11 @@
 package wifitable
 
 import (
-	"strings"
 	"time"
-	"wfmon/pkg/network"
+	netdata "wfmon/pkg/data/net"
+	"wfmon/pkg/ds"
 
-	"github.com/charmbracelet/bubbles/help"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 )
@@ -14,6 +13,7 @@ import (
 const (
 	defaultRefreshInterval = time.Second
 	defaultTableHeight     = 10
+	defaultTableWidth      = 120
 )
 
 var (
@@ -24,16 +24,16 @@ var (
 )
 
 type Model struct {
-	table           table.Model
-	sort            Sort
+	table.Model
+	viewport        viewport.Model
+	dataSource      ds.NetworkProvider
+	networks        netdata.Slice
+	associated      netdata.Key
+	selected        netdata.Key
 	stationViewMode Cycler[StationViewMode]
 	signalViewMode  Cycler[SignalViewMode]
-	dataSource      *DataSource
-	networks        NetworkSlice
-	associated      *NetworkKey
+	sort            Sort
 	keys            KeyMap
-	help            help.Model
-	helpShown       bool
 }
 
 func defaultViewMode() (Sort, Cycler[SignalViewMode], Cycler[StationViewMode]) {
@@ -42,10 +42,21 @@ func defaultViewMode() (Sort, Cycler[SignalViewMode], Cycler[StationViewMode]) {
 		BSSIDViewMode.Cycle()
 }
 
-func NewTable(ds *DataSource, network network.Network) *Model {
-	help := help.New()
-	help.ShowAll = true
+type Option func(*Model)
 
+func WithDataSource(dataSource ds.NetworkProvider) Option {
+	return func(m *Model) {
+		m.dataSource = dataSource
+	}
+}
+
+func WithAssociated(key netdata.Key) Option {
+	return func(m *Model) {
+		m.associated = key
+	}
+}
+
+func New(opts ...Option) *Model {
 	sort, signalViewMode, stationViewMode := defaultViewMode()
 	columns := GenerateColumns(sort, signalViewMode.Current())
 
@@ -54,94 +65,41 @@ func NewTable(ds *DataSource, network network.Network) *Model {
 		Border(table.Border{}).
 		WithPageSize(defaultTableHeight).
 		WithPaginationWrapping(false).
+		WithMaxTotalWidth(defaultTableWidth).
 		WithKeyMap(keys.KeyMap).
 		WithBaseStyle(defaultBaseStyle).
 		HeaderStyle(defaultHeaderStyle).
 		HighlightStyle(defaultSelectedStyle).
 		Focused(true)
 
-	return &Model{
-		table:           t,
+	m := &Model{
+		Model:           t,
+		viewport:        viewport.New(defaultTableWidth, defaultTableHeight+2),
 		keys:            keys,
-		help:            help,
 		stationViewMode: stationViewMode,
 		signalViewMode:  signalViewMode,
 		sort:            sort,
-		dataSource:      ds,
-		networks:        NetworkSlice{},
-		associated:      NewNetworkKey(network.BSSID, network.SSID),
+		networks:        netdata.Slice{},
 	}
+
+	for _, opt := range opts {
+		opt(m)
+	}
+
+	return m
 }
 
-func (m *Model) Init() tea.Cmd {
-	return tea.Batch(
-		refreshTick(m.dataSource, defaultRefreshInterval),
-	)
+func (m *Model) SetDataSource(dataSource ds.NetworkProvider) {
+	m.dataSource = dataSource
+}
+
+func (m *Model) Keys() KeyMap {
+	return m.keys
 }
 
 func (m *Model) View() string {
-	body := strings.Builder{}
-
-	if m.helpShown {
-		body.WriteString(m.help.View(&m.keys))
-	} else {
-		// style := lipgloss.NewStyle()
-		// body.WriteString(style.Render(m.table.View()))
-		body.WriteString(m.table.View())
-	}
-
-	return body.String()
-}
-
-// Reapplies data and columns.
-func (m *Model) refresh() {
-	m.table = m.table.
-		WithRows(getRows(m.networks, m.associated)).
-		WithColumns(GenerateColumns(m.sort, m.stationViewMode.Current(), m.signalViewMode.Current()))
-}
-
-// Returns sorted rows to redraw tick.
-func getRows(networks NetworkSlice, associated *NetworkKey) []table.Row {
-	// get registered column keys
-	columns := ColumnsKeys()
-	// get registered cell viewers
-	viewers := GenerateCellViewers(associated)
-
-	rows := make([]table.Row, len(networks))
-	for rowID, e := range networks {
-		entry := e
-
-		row := make(table.RowData, len(columns))
-		for _, key := range columns {
-			row[key] = viewers[key](&entry)
-		}
-
-		rows[rowID] = table.NewRow(row)
-	}
-
-	return rows
-}
-
-type RefreshMsg NetworkSlice
-
-// Invokes refresh table by refreshInterval.
-func refreshTick(ds *DataSource, interval time.Duration) tea.Cmd {
-	return tea.Tick(interval, func(t time.Time) tea.Msg {
-		// Copy networks stats
-		networks := ds.NetworkSlice()
-
-		// return RefreshMsg
-		return RefreshMsg(networks)
-	})
-}
-
-func (m *Model) onRefreshMsg(msg RefreshMsg) {
-	// get networks from last tick
-	m.networks = NetworkSlice(msg)
-
-	// apply current sorting
-	m.sort.Sort(m.networks)
-
-	// apply columns and rows to table
-	m.refresh()
+	m.viewport.SetContent(
+		lipgloss.JoinVertical(lipgloss.Left, m.Model.View()),
+	)
+	return m.viewport.View()
 }

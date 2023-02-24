@@ -10,11 +10,15 @@ import (
 	"syscall"
 	"time"
 	mode "wfmon/pkg"
+	netdata "wfmon/pkg/data/net"
+	"wfmon/pkg/ds"
 	log "wfmon/pkg/logger"
 	"wfmon/pkg/network"
 	"wfmon/pkg/radio"
 	"wfmon/pkg/serv"
-	wifitable "wfmon/pkg/widgets/wifitable"
+	"wfmon/pkg/widgets/dashboard"
+	"wfmon/pkg/widgets/sparkline"
+	"wfmon/pkg/widgets/wifitable"
 	"wfmon/pkg/wifi"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -158,10 +162,22 @@ func (app *Application) init(ctx context.Context) {
 		HopInterval: app.chHopInterval,
 	})
 
-	// create table controller
-	// table := wifitable.NewTableCtrl(mon.GetFrames())
-	dataSource := wifitable.NewDataSource(mon.GetFrames())
-	table := wifitable.NewTable(dataSource, app.associatedNetwork)
+	// create datasource and tui
+	dataSource := ds.New(mon.GetFrames())
+	dashboard := dashboard.New(
+		dashboard.WithTable(wifitable.New(
+			wifitable.WithAssociated(netdata.NewKey(
+				app.associatedNetwork.BSSID,
+				app.associatedNetwork.SSID,
+			)),
+		)),
+		dashboard.WithSparkline(sparkline.New(
+			sparkline.WithField(netdata.RSSIKey),
+			sparkline.WithMaxVal(100),
+			// sparkline.WithDimention(sparkline.DefaultWidth, sparkline.DefaultHeight),
+		)),
+		dashboard.WithDataSource(dataSource),
+	)
 
 	// setup services
 	app.servs = []serv.Serv{mon, hopper}
@@ -178,7 +194,7 @@ func (app *Application) init(ctx context.Context) {
 
 	// create tea program
 	app.program = tea.NewProgram(
-		table,
+		dashboard,
 		tea.WithContext(ctx),
 		tea.WithInputTTY(),
 		tea.WithAltScreen(),

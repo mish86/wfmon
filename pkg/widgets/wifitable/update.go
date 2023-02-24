@@ -3,36 +3,84 @@ package wifitable
 import (
 	"strconv"
 	log "wfmon/pkg/logger"
+	"wfmon/pkg/widgets"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Init() tea.Cmd {
+	// return refreshTick(m.dataSource, defaultRefreshInterval)
+	return refreshTick(defaultRefreshInterval)
+}
+
+func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 
-	m.table, cmd = m.table.Update(msg)
-	cmds = append(cmds, cmd)
+	// returns event with selected network key
+	var onSelectedCmd = func() func() tea.Msg {
+		cursor := m.GetHighlightedRowIndex()
 
-	// refreshCmd := func() tea.Msg { return RefreshMsg(m.networks) }
+		// out of bounds
+		if cursor < 0 || cursor >= len(m.networks) {
+			log.Errorf("cursor %d out of bounds networks: %v", cursor, m.networks)
+			return nil
+		}
+
+		// cursor not changed
+		if m.selected.Compare(m.networks[cursor].Key()) == 0 {
+			return nil
+		}
+
+		// broadcast event to other widgets about changed selection
+		return func() tea.Msg {
+			return widgets.NetworkKeyMsg(m.networks[cursor].Key())
+		}
+	}
+
+	// returns event with new table width
+	var onResizeCmd = func() func() tea.Msg {
+		enums := []Keyer{
+			m.signalViewMode.Current(),
+			m.stationViewMode.Current(),
+		}
+		return func() tea.Msg {
+			return widgets.TableWidthMsg(tableWidth(enums...))
+		}
+	}
+
+	m.Model, cmd = m.Model.Update(msg)
+	cmds = append(cmds, cmd)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.RowUp):
 			m.moveRowUp()
+			cmds = append(cmds, onSelectedCmd())
 
 		case key.Matches(msg, m.keys.RowDown):
 			m.moveRowDown()
+			cmds = append(cmds, onSelectedCmd())
+
+		case key.Matches(msg, m.keys.PageUp):
+			m.Model = m.PageUp()
+			cmds = append(cmds, onSelectedCmd())
+
+		case key.Matches(msg, m.keys.PageDown):
+			m.Model = m.PageDown()
+			cmds = append(cmds, onSelectedCmd())
 
 		case key.Matches(msg, m.keys.GotoTop):
 			m.gotoTop()
+			cmds = append(cmds, onSelectedCmd())
 
 		case key.Matches(msg, m.keys.GotoBottom):
 			m.gotoBottom()
+			cmds = append(cmds, onSelectedCmd())
 
 		case key.Matches(msg, m.keys.SignalView):
 			prevKey := m.signalViewMode.Current().Key()
@@ -40,7 +88,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.sort.key == prevKey {
 				m.sort = SortBy(m.signalViewMode.Current().Key())(m.sort.ord)
 			}
+			// apply current sorting
+			m.sort.Sort(m.networks)
+			// refresh table
 			m.refresh()
+			// send event about table width and cursort change
+			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.StationView):
 			prevKey := m.stationViewMode.Current().Key()
@@ -48,65 +101,78 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.sort.key == prevKey {
 				m.sort = SortBy(m.stationViewMode.Current().Key())(m.sort.ord)
 			}
+			// apply current sorting
+			m.sort.Sort(m.networks)
+			// refresh table
 			m.refresh()
+			// send event about table width and cursort change
+			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.Reset):
 			m.sort, m.signalViewMode, m.stationViewMode = defaultViewMode()
+			// apply current sorting
+			m.sort.Sort(m.networks)
+			// refresh table
 			m.refresh()
+			// send event about table width and cursort change
+			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.Sort):
 			if m.sortBy(msg) {
 				m.refresh()
+				cmds = append(cmds, onSelectedCmd())
 			}
-
-		case key.Matches(msg, m.keys.Help):
-			m.helpShown = !m.helpShown
-
-		case key.Matches(msg, m.keys.Quit):
-			cmds = append(cmds, tea.Quit)
 		}
 
-	case RefreshMsg:
-		// Apply rows and columns in table
+	case refreshMsg:
+		broadcastFirstEvent := len(m.networks) == 0
+
+		// fetch fresh data from data source and apply it to the table.
 		m.onRefreshMsg(msg)
 
-		// schedule next refresh tick
-		cmds = append(cmds, refreshTick(m.dataSource, defaultRefreshInterval))
+		broadcastFirstEvent = broadcastFirstEvent && len(m.networks) > 0
+
+		if broadcastFirstEvent {
+			cmds = append(cmds, onResizeCmd())
+		}
+
+		cmds = append(cmds, onSelectedCmd(), refreshTick(defaultRefreshInterval))
 	}
 
+	// Bubble up the cmds
 	return m, tea.Batch(cmds...)
 }
 
 func (m *Model) moveRowUp() {
-	rowIdx := m.table.GetHighlightedRowIndex() - 1
+	rowIdx := m.GetHighlightedRowIndex() - 1
 
 	if rowIdx < 0 {
 		rowIdx = 0
 	}
 
-	m.table = m.table.WithHighlightedRow(rowIdx)
+	m.Model = m.WithHighlightedRow(rowIdx)
 }
 
 func (m *Model) moveRowDown() {
-	rowIdx := m.table.GetHighlightedRowIndex() + 1
+	rowIdx := m.GetHighlightedRowIndex() + 1
 
-	if rowIdx >= len(m.table.GetVisibleRows()) {
-		rowIdx = len(m.table.GetVisibleRows()) - 1
+	if rowIdx >= len(m.GetVisibleRows()) {
+		rowIdx = len(m.GetVisibleRows()) - 1
 	}
 
-	m.table = m.table.WithHighlightedRow(rowIdx)
+	m.Model = m.WithHighlightedRow(rowIdx)
 }
 
 func (m *Model) gotoTop() {
-	m.table = m.table.
+	m.Model = m.
 		WithCurrentPage(0).
 		WithHighlightedRow(0)
 }
 
 func (m *Model) gotoBottom() {
-	m.table = m.table.
-		WithCurrentPage(m.table.MaxPages() - 1).
-		WithHighlightedRow(len(m.table.GetVisibleRows()) - 1)
+	m.Model = m.
+		WithCurrentPage(m.MaxPages() - 1).
+		WithHighlightedRow(len(m.GetVisibleRows()) - 1)
 }
 
 func (m *Model) sortBy(msg tea.KeyMsg) bool {

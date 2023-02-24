@@ -7,6 +7,8 @@ import (
 
 type KeyMap struct {
 	table.KeyMap
+	PageUp      key.Binding
+	PageDown    key.Binding
 	RowUp       key.Binding
 	RowDown     key.Binding
 	GotoTop     key.Binding
@@ -22,15 +24,23 @@ type KeyMap struct {
 func NewKeyMap() KeyMap {
 	return KeyMap{
 		KeyMap: table.KeyMap{
-			PageUp: key.NewBinding(
-				key.WithKeys("left", "b", "pgup"),
-				key.WithHelp("←/b/pgup", "page up"),
+			ScrollLeft: key.NewBinding(
+				key.WithKeys("shift+left"),
+				key.WithHelp("shift+←", "scroll left"),
 			),
-			PageDown: key.NewBinding(
-				key.WithKeys("right", "f", "pgdown"),
-				key.WithHelp("→/f/pgdown", "page down"),
+			ScrollRight: key.NewBinding(
+				key.WithKeys("shift+right"),
+				key.WithHelp("shift+→", "scroll right"),
 			),
 		},
+		PageUp: key.NewBinding(
+			key.WithKeys("left", "b", "pgup"),
+			key.WithHelp("←/b/pgup", "page up"),
+		),
+		PageDown: key.NewBinding(
+			key.WithKeys("right", "f", "pgdown"),
+			key.WithHelp("→/f/pgdown", "page down"),
+		),
 		GotoTop: key.NewBinding(
 			key.WithKeys("home", "g"),
 			key.WithHelp("g/home", "go to start"),

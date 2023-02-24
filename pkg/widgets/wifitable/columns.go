@@ -2,10 +2,8 @@ package wifitable
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
-
-	"wfmon/pkg/widgets"
+	netdata "wfmon/pkg/data/net"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -13,18 +11,18 @@ import (
 )
 
 const (
-	ColumnSSIDKey      = "Network"
-	ColumnBSSIDKey     = "BSSID"
-	ColumnManufKey     = "Manuf"
-	ColumnManufLongKey = "Manufactor"
-	ColumnChanKey      = "Chan"
-	ColumnWidthKey     = "Width"
-	ColumnBandKey      = "Band"
-	ColumnRSSIKey      = "RSSI"
-	ColumnQualityKey   = "Quality"
-	ColumnBarsKey      = "Bars"
-	ColumnNoiseKey     = "Noise"
-	ColumnSNRKey       = "SNR"
+	ColumnSSIDKey      = netdata.SSIDKey
+	ColumnBSSIDKey     = netdata.BSSIDKey
+	ColumnManufKey     = netdata.ManufKey
+	ColumnManufLongKey = netdata.ManufLongKey
+	ColumnChanKey      = netdata.ChanKey
+	ColumnWidthKey     = netdata.WidthKey
+	ColumnBandKey      = netdata.BandKey
+	ColumnRSSIKey      = netdata.RSSIKey
+	ColumnQualityKey   = netdata.QualityKey
+	ColumnBarsKey      = netdata.BarsKey
+	ColumnNoiseKey     = netdata.NoiseKey
+	ColumnSNRKey       = netdata.SNRKey
 )
 
 // Provides cycling of view for multi column viewers.
@@ -236,7 +234,7 @@ func VisibleColumnsKeys(enums ...Keyer) []string {
 	}
 }
 
-// Returns predefined columns width
+// Returns predefined columns width.
 func columnsWidth() map[string]int {
 	//nolint:gomnd // ignore
 	return map[string]int{
@@ -253,6 +251,18 @@ func columnsWidth() map[string]int {
 		ColumnNoiseKey:     8,
 		ColumnSNRKey:       5,
 	}
+}
+
+// Returns actual table width.
+// Considering no borders and no margins uses predefined columns width.
+func tableWidth(enums ...Keyer) int {
+	width := 0
+	widths := columnsWidth()
+	for _, key := range VisibleColumnsKeys(enums...) {
+		width += widths[key]
+	}
+
+	return width
 }
 
 // Returns @table.Column with applied sorting in title and width.
@@ -306,10 +316,8 @@ func GenerateColumns(sort Sort, enums ...MultiViewColumnGenerator) []table.Colum
 func GenerateSorters(column string) Sort {
 	sorters := map[string]Sort{
 		ColumnSSIDKey: {
-			key: ColumnSSIDKey,
-			sorter: func(networks NetworkSlice) sort.Interface {
-				return BySSIDSorter(networks)
-			},
+			key:    ColumnSSIDKey,
+			sorter: BySSIDSorter(),
 		},
 		ColumnBSSIDKey: {
 			key:    ColumnBSSIDKey,
@@ -367,13 +375,13 @@ func GenerateSorters(column string) Sort {
 }
 
 // Network data field getter. Returns cell presentation in accetable as table.RowData.
-type FncCellViewer func(data *NetworkData) any
+type FncCellViewer func(data *netdata.Network) any
 
 // Returns string presentation of cell by column title.
-func GenerateCellViewers(associated *NetworkKey) map[any]FncCellViewer {
-	widths := columnsWidth()
+func GenerateCellViewers(associated netdata.Key) map[any]FncCellViewer {
+	// widths := columnsWidth()
 
-	associatedStyle := func(data *NetworkData) lipgloss.Style {
+	var associatedStyle = func(data *netdata.Network) lipgloss.Style {
 		if data.Key().Compare(associated) == 0 {
 			return defaultAssociatedStyle
 		}
@@ -382,57 +390,58 @@ func GenerateCellViewers(associated *NetworkKey) map[any]FncCellViewer {
 	}
 
 	getters := map[any]FncCellViewer{
-		ColumnSSIDKey: func(data *NetworkData) any {
+		ColumnSSIDKey: func(data *netdata.Network) any {
 			// The goal is to keep space between columns.
 			// Setup border.left/border.right with ' ' does not work and has side effects.
 			// Padding/Margin does not work properly on this column or right after this one.
 			// ref. https://github.com/Evertras/bubble-table/issues/130
 			// Thus manually truncate string.
-			style := associatedStyle(data)
-			return table.NewStyledCell(widgets.StringWithTail(data.NetworkName, widths[ColumnSSIDKey]-1), style)
+			// style := associatedStyle(data)
+			// return table.NewStyledCell(reflow.StringWithTail(data.NetworkName, widths[ColumnSSIDKey]-1), style)
+			return table.NewStyledCell(data.NetworkName, associatedStyle(data))
 		},
-		ColumnBSSIDKey: func(data *NetworkData) any {
+		ColumnBSSIDKey: func(data *netdata.Network) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
 			return table.NewStyledCell(data.BSSID, style)
 		},
-		ColumnManufKey: func(data *NetworkData) any {
+		ColumnManufKey: func(data *netdata.Network) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
 			return table.NewStyledCell(data.Manuf, style)
 		},
-		ColumnManufLongKey: func(data *NetworkData) any {
+		ColumnManufLongKey: func(data *netdata.Network) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
 			return table.NewStyledCell(data.ManufLong, style)
 		},
-		ColumnChanKey: func(data *NetworkData) any {
+		ColumnChanKey: func(data *netdata.Network) any {
 			style := associatedStyle(data)
 			return style.Render(strconv.Itoa(int(data.Channel)))
 		},
-		ColumnWidthKey: func(data *NetworkData) any {
+		ColumnWidthKey: func(data *netdata.Network) any {
 			style := associatedStyle(data)
 			return style.Render(strconv.Itoa(int(data.ChannelWidth)))
 		},
-		ColumnBandKey: func(data *NetworkData) any {
+		ColumnBandKey: func(data *netdata.Network) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(associatedStyle(data))
 			return table.NewStyledCell(data.Band.String(), style)
 		},
-		ColumnRSSIKey: func(data *NetworkData) any {
+		ColumnRSSIKey: func(data *netdata.Network) any {
 			style := associatedStyle(data)
 			return style.Render(strconv.Itoa(int(data.RSSI)))
 		},
-		ColumnQualityKey: func(data *NetworkData) any {
+		ColumnQualityKey: func(data *netdata.Network) any {
 			style := associatedStyle(data)
 			return style.Render(data.Quality.String())
 		},
-		ColumnBarsKey: func(data *NetworkData) any {
+		ColumnBarsKey: func(data *netdata.Network) any {
 			bars := Bars(data.Quality)
 			style := bars.Style().Inherit(associatedStyle(data))
 			return style.Render(bars.String())
 		},
-		ColumnNoiseKey: func(data *NetworkData) any {
+		ColumnNoiseKey: func(data *netdata.Network) any {
 			style := associatedStyle(data)
 			return style.Render(strconv.Itoa(int(data.Noise)))
 		},
-		ColumnSNRKey: func(data *NetworkData) any {
+		ColumnSNRKey: func(data *netdata.Network) any {
 			style := associatedStyle(data)
 			return style.Render(strconv.Itoa(int(data.SNR)))
 		},
@@ -441,7 +450,7 @@ func GenerateCellViewers(associated *NetworkKey) map[any]FncCellViewer {
 	return getters
 }
 
-type Bars Quality
+type Bars netdata.Quality
 
 func (q Bars) Style() lipgloss.Style {
 	//nolint:gomnd // ignore
