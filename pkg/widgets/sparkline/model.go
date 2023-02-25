@@ -75,6 +75,7 @@ func New(opts ...Option) *Model {
 		viewport:       viewport.New(defaultWidth, defaultHeight),
 		sparkline:      sparkline,
 		sparklineGroup: sparklineGroup,
+		dataSource:     ds.EmptyProvider{},
 	}
 
 	for _, opt := range opts {

@@ -24,6 +24,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	var onSelectedCmd = func() func() tea.Msg {
 		cursor := m.GetHighlightedRowIndex()
 
+		// no data
+		if len(m.networks) == 0 {
+			return nil
+		}
+
 		// out of bounds
 		if cursor < 0 || cursor >= len(m.networks) {
 			log.Errorf("cursor %d out of bounds networks: %v", cursor, m.networks)

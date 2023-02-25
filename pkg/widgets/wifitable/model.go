@@ -80,6 +80,7 @@ func New(opts ...Option) *Model {
 		signalViewMode:  signalViewMode,
 		sort:            sort,
 		networks:        netdata.Slice{},
+		dataSource:      ds.EmptyProvider{},
 	}
 
 	for _, opt := range opts {

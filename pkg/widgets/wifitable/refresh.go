@@ -53,10 +53,6 @@ func (m *Model) getRows() []table.Row {
 // Sorts networks as per current column and order.
 // Invokes @refresh to redraw the table.
 func (m *Model) onRefreshMsg(msg refreshMsg) {
-	if m.dataSource == nil {
-		return
-	}
-
 	m.networks = m.dataSource.Networks()
 
 	// apply current sorting

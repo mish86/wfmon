@@ -174,7 +174,6 @@ func (app *Application) init(ctx context.Context) {
 		dashboard.WithSparkline(sparkline.New(
 			sparkline.WithField(netdata.RSSIKey),
 			sparkline.WithMaxVal(100),
-			// sparkline.WithDimention(sparkline.DefaultWidth, sparkline.DefaultHeight),
 		)),
 		dashboard.WithDataSource(dataSource),
 	)

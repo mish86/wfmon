@@ -24,10 +24,6 @@ func refreshTick(interval time.Duration) tea.Cmd {
 // Returns vector as a range of timeseries by network and field keys.
 // Vector is reversed to render chart from right to left having new values on right.
 func (m *Model) getData() ts.Vector {
-	if m.dataSource == nil {
-		return ts.Vector{}
-	}
-
 	return m.dataSource.
 		TimeSeries(m.netKey)(m.fieldKey).
 		Range(m.viewport.Width, func(val float64) float64 { return m.sparkline.MaxVal + val }).
