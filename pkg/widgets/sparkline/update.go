@@ -19,7 +19,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case widgets.NetworkKeyMsg:
-		m.SetNetworkKey(netdata.Key(msg))
+		m.SetNetworkKey(netdata.Key(msg.Key))
+		m.SetColor(msg.Color.Lipgloss())
 		m.sparkline.Data = m.getData()
 		m.refresh()
 

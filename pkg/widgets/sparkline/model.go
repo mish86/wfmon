@@ -7,6 +7,7 @@ import (
 	"wfmon/pkg/ts"
 
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/lipgloss"
 	tui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -14,6 +15,7 @@ import (
 const (
 	defaultHeight          = 10
 	defaultWidth           = 95
+	defaultColor           = lipgloss.Color("#EE6FF8")
 	defaultRefreshInterval = time.Second
 )
 
@@ -22,6 +24,7 @@ type Model struct {
 
 	sparkline      *widgets.Sparkline
 	sparklineGroup *widgets.SparklineGroup
+	color          lipgloss.Color
 
 	fieldKey   string
 	netKey     netdata.Key
@@ -75,6 +78,7 @@ func New(opts ...Option) *Model {
 		viewport:       viewport.New(defaultWidth, defaultHeight),
 		sparkline:      sparkline,
 		sparklineGroup: sparklineGroup,
+		color:          defaultColor,
 		dataSource:     ds.EmptyProvider{},
 	}
 
@@ -91,6 +95,10 @@ func (m *Model) SetDataSource(dataSource ds.TimeSeriesProvider) {
 
 func (m *Model) SetNetworkKey(key netdata.Key) {
 	m.netKey = key
+}
+
+func (m *Model) SetColor(c lipgloss.Color) {
+	m.color = c
 }
 
 func (m *Model) SetFieldKey(key string) {

@@ -4,6 +4,7 @@ import (
 	"time"
 	netdata "wfmon/pkg/data/net"
 	"wfmon/pkg/ds"
+	"wfmon/pkg/widgets/color"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
@@ -28,6 +29,7 @@ type Model struct {
 	viewport        viewport.Model
 	dataSource      ds.NetworkProvider
 	networks        netdata.Slice
+	colors          map[netdata.Key]color.HexColor
 	associated      netdata.Key
 	selected        netdata.Key
 	stationViewMode Cycler[StationViewMode]
@@ -58,10 +60,10 @@ func WithAssociated(key netdata.Key) Option {
 
 func New(opts ...Option) *Model {
 	sort, signalViewMode, stationViewMode := defaultViewMode()
-	columns := GenerateColumns(sort, signalViewMode.Current())
+	cols := append([]table.Column{colorColumn()}, GenerateColumns(sort, signalViewMode.Current())...)
 
 	keys := NewKeyMap()
-	t := table.New(columns).
+	t := table.New(cols).
 		Border(table.Border{}).
 		WithPageSize(defaultTableHeight).
 		WithPaginationWrapping(false).
@@ -80,6 +82,7 @@ func New(opts ...Option) *Model {
 		signalViewMode:  signalViewMode,
 		sort:            sort,
 		networks:        netdata.Slice{},
+		colors:          map[netdata.Key]color.HexColor{},
 		dataSource:      ds.EmptyProvider{},
 	}
 

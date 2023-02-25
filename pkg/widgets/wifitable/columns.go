@@ -276,6 +276,10 @@ func newColumn(widths map[string]int, sort Sort) func(key string) table.Column {
 	}
 }
 
+func colorColumn() table.Column {
+	return table.NewColumn("#", "#", 2)
+}
+
 // Returns default columns.
 // Multiview column viewers can be passed in any order. The proper one selected by key columns.
 // Supoprted multi columns viewers:

@@ -2,8 +2,10 @@ package wifitable
 
 import (
 	"time"
+	"wfmon/pkg/widgets/color"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 )
 
@@ -20,9 +22,13 @@ func refreshTick(interval time.Duration) tea.Cmd {
 
 // Immediately reapplies data and columns.
 func (m *Model) refresh() {
+	cols := GenerateColumns(m.sort, m.stationViewMode.Current(), m.signalViewMode.Current())
+	cols = append([]table.Column{colorColumn()}, cols...)
+	rows := m.getRows()
+
 	m.Model = m.
-		WithRows(m.getRows()).
-		WithColumns(GenerateColumns(m.sort, m.stationViewMode.Current(), m.signalViewMode.Current()))
+		WithRows(rows).
+		WithColumns(cols)
 }
 
 // Returns table rows from networks.
@@ -42,6 +48,9 @@ func (m *Model) getRows() []table.Row {
 			row[key] = viewers[key](&entry)
 		}
 
+		netLegendStyle := lipgloss.NewStyle().Background(m.colors[entry.Key()].Lipgloss())
+		row["#"] = netLegendStyle.Render(" ")
+
 		rows[rowID] = table.NewRow(row)
 	}
 
@@ -54,6 +63,14 @@ func (m *Model) getRows() []table.Row {
 // Invokes @refresh to redraw the table.
 func (m *Model) onRefreshMsg(msg refreshMsg) {
 	m.networks = m.dataSource.Networks()
+
+	iter := color.Random()
+	for _, network := range m.networks {
+		key := network.Key()
+		if _, found := m.colors[key]; !found {
+			m.colors[key], iter = iter()
+		}
+	}
 
 	// apply current sorting
 	m.sort.Sort(m.networks)

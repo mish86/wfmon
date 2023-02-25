@@ -39,7 +39,7 @@ func (m *Model) refresh() {
 	item.Unlock()
 
 	inlineStyle := lipgloss.NewStyle().Width(item.GetRect().Dx()).MaxWidth(item.GetRect().Dx()).Inline(true)
-	rowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EE6FF8"))
+	rowStyle := lipgloss.NewStyle().Foreground(m.color)
 
 	renderedRows := make([]string, item.GetRect().Dy())
 	for y := 0; y < item.GetRect().Dy(); y++ {

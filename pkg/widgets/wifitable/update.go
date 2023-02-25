@@ -42,7 +42,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 		// broadcast event to other widgets about changed selection
 		return func() tea.Msg {
-			return widgets.NetworkKeyMsg(m.networks[cursor].Key())
+			key := m.networks[cursor].Key()
+			return widgets.NetworkKeyMsg{
+				Key:   key,
+				Color: m.colors[key],
+			}
 		}
 	}
 
