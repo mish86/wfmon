@@ -23,7 +23,7 @@ func refreshTick(interval time.Duration) tea.Cmd {
 // Immediately reapplies data and columns.
 func (m *Model) refresh() {
 	cols := GenerateColumns(m.sort, m.stationViewMode.Current(), m.signalViewMode.Current())
-	cols = append([]table.Column{colorColumn()}, cols...)
+	// cols = append([]table.Column{colorColumn()}, cols...)
 	rows := m.getRows()
 
 	m.Model = m.
@@ -45,11 +45,13 @@ func (m *Model) getRows() []table.Row {
 
 		row := make(table.RowData, len(columns))
 		for _, key := range columns {
-			row[key] = viewers[key](&entry)
+			if viewer, found := viewers[key]; found {
+				row[key] = viewer(&entry)
+			}
 		}
 
-		netLegendStyle := lipgloss.NewStyle().Background(m.colors[entry.Key()].Lipgloss())
-		row["#"] = netLegendStyle.Render(" ")
+		hashStyle := lipgloss.NewStyle().Background(m.colors[entry.Key()].Lipgloss())
+		row["#"] = hashStyle.Render(" ")
 
 		rows[rowID] = table.NewRow(row)
 	}
@@ -62,6 +64,7 @@ func (m *Model) getRows() []table.Row {
 // Sorts networks as per current column and order.
 // Invokes @refresh to redraw the table.
 func (m *Model) onRefreshMsg(msg refreshMsg) {
+	// FIXME: race at access to networks and colors in update.
 	m.networks = m.dataSource.Networks()
 
 	iter := color.Random()

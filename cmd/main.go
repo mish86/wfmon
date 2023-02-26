@@ -173,9 +173,13 @@ func (app *Application) init(ctx context.Context) {
 		)),
 		dashboard.WithSparkline(sparkline.New(
 			sparkline.WithField(netdata.RSSIKey),
+			sparkline.WithYAxe(true),
+			sparkline.WithMinVal(0),
 			sparkline.WithMaxVal(100),
+			sparkline.WithModifier(func(val float64) float64 { return val + 100 }),
 		)),
 		dashboard.WithDataSource(dataSource),
+		// dashboard.WithDataSource(ds.EmptyProvider{}),
 	)
 
 	// setup services

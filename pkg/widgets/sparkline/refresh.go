@@ -26,7 +26,7 @@ func refreshTick(interval time.Duration) tea.Cmd {
 func (m *Model) getData() ts.Vector {
 	return m.dataSource.
 		TimeSeries(m.netKey)(m.fieldKey).
-		Range(m.viewport.Width, func(val float64) float64 { return m.sparkline.MaxVal + val }).
+		Range(m.viewport.Width, m.modifier).
 		Reverse()
 }
 
@@ -41,8 +41,9 @@ func (m *Model) refresh() {
 	inlineStyle := lipgloss.NewStyle().Width(item.GetRect().Dx()).MaxWidth(item.GetRect().Dx()).Inline(true)
 	rowStyle := lipgloss.NewStyle().Foreground(m.color)
 
-	renderedRows := make([]string, item.GetRect().Dy())
-	for y := 0; y < item.GetRect().Dy(); y++ {
+	// TODO: is first row always empty?
+	renderedRows := make([]string, item.GetRect().Dy()-1)
+	for y := 0; y < item.GetRect().Dy()-1; y++ {
 		row := strings.Builder{}
 		// reverse order: from right to left
 		for x := item.GetRect().Dx() - 1; x >= 0; x-- {

@@ -103,5 +103,5 @@ func (m *Model) View() string {
 		return m.help.View(&keys)
 	}
 
-	return m.table.View() + m.sparkline.View()
+	return m.table.View() + "\n" + m.sparkline.View()
 }

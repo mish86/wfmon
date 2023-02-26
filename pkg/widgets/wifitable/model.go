@@ -60,7 +60,8 @@ func WithAssociated(key netdata.Key) Option {
 
 func New(opts ...Option) *Model {
 	sort, signalViewMode, stationViewMode := defaultViewMode()
-	cols := append([]table.Column{colorColumn()}, GenerateColumns(sort, signalViewMode.Current())...)
+	// cols := append([]table.Column{colorColumn()}, GenerateColumns(sort, signalViewMode.Current())...)
+	cols := GenerateColumns(sort, signalViewMode.Current(), stationViewMode.Current())
 
 	keys := NewKeyMap()
 	t := table.New(cols).

@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	ColumnHashKey      = "#"
 	ColumnSSIDKey      = netdata.SSIDKey
 	ColumnBSSIDKey     = netdata.BSSIDKey
 	ColumnManufKey     = netdata.ManufKey
@@ -238,6 +239,7 @@ func VisibleColumnsKeys(enums ...Keyer) []string {
 func columnsWidth() map[string]int {
 	//nolint:gomnd // ignore
 	return map[string]int{
+		ColumnHashKey:      2,
 		ColumnSSIDKey:      20,
 		ColumnBSSIDKey:     20,
 		ColumnManufKey:     10,
@@ -276,9 +278,9 @@ func newColumn(widths map[string]int, sort Sort) func(key string) table.Column {
 	}
 }
 
-func colorColumn() table.Column {
-	return table.NewColumn("#", "#", 2)
-}
+// func colorColumn() table.Column {
+// 	return table.NewColumn("#", "#", 2)
+// }
 
 // Returns default columns.
 // Multiview column viewers can be passed in any order. The proper one selected by key columns.
@@ -301,6 +303,7 @@ func GenerateColumns(sort Sort, enums ...MultiViewColumnGenerator) []table.Colum
 	}
 
 	return []table.Column{
+		newColumn(widths, sort)(ColumnHashKey),
 		newColumn(widths, sort)(ColumnSSIDKey).WithStyle(
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
@@ -481,14 +484,14 @@ func (q Bars) String() string {
 	case q >= 80:
 		return "▂▄▆█"
 	case 60 <= q && q < 80:
-		return "▂▄▆_"
+		return "▂▄▆▁"
 	case 40 <= q && q < 60:
-		return "▂▄__"
+		return "▂▄▁▁"
 	case 20 <= q && q < 40:
-		return "▂___"
+		return "▂▁▁▁"
 	case q < 20:
-		return "____"
+		return "▁▁▁▁"
 	default:
-		return "____"
+		return "▁▁▁▁"
 	}
 }
