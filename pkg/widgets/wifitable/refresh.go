@@ -3,9 +3,10 @@ package wifitable
 import (
 	"time"
 	"wfmon/pkg/widgets/color"
+	column "wfmon/pkg/widgets/wifitable/col"
+	"wfmon/pkg/widgets/wifitable/row"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 )
 
@@ -22,38 +23,30 @@ func refreshTick(interval time.Duration) tea.Cmd {
 
 // Immediately reapplies data and columns.
 func (m *Model) refresh() {
-	cols := GenerateColumns(m.sort, m.stationViewMode.Current(), m.signalViewMode.Current())
-	// cols = append([]table.Column{colorColumn()}, cols...)
-	rows := m.getRows()
-
 	m.Model = m.
-		WithRows(rows).
-		WithColumns(cols)
+		WithRows(m.getRows()).
+		WithColumns(column.Converter(m.columns)(m.sort))
 }
 
 // Returns table rows from networks.
 // Networks already sorted in @onRefreshMsg.
 func (m *Model) getRows() []table.Row {
-	// get registered column keys
-	columns := ColumnsKeys()
-	// get registered cell viewers
-	viewers := GenerateCellViewers(m.associated)
+	viewer := row.Converter(m.columns, cellViewers())
 
 	rows := make([]table.Row, len(m.networks))
 	for rowID, e := range m.networks {
 		entry := e
 
-		row := make(table.RowData, len(columns))
-		for _, key := range columns {
-			if viewer, found := viewers[key]; found {
-				row[key] = viewer(&entry)
-			}
+		rowStyle := defaultBaseStyle
+		if entry.Key().Compare(m.associated) == 0 {
+			rowStyle = defaultAssociatedStyle
 		}
 
-		hashStyle := lipgloss.NewStyle().Background(m.colors[entry.Key()].Lipgloss())
-		row["#"] = hashStyle.Render(" ")
+		data := row.Data{Network: entry}.
+			HashColor(m.colors[entry.Key()].Lipgloss()).
+			Style(rowStyle)
 
-		rows[rowID] = table.NewRow(row)
+		rows[rowID] = viewer(&data)
 	}
 
 	return rows

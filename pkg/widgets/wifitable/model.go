@@ -4,7 +4,11 @@ import (
 	"time"
 	netdata "wfmon/pkg/data/net"
 	"wfmon/pkg/ds"
+	log "wfmon/pkg/logger"
 	"wfmon/pkg/widgets/color"
+	column "wfmon/pkg/widgets/wifitable/col"
+	order "wfmon/pkg/widgets/wifitable/ord"
+	"wfmon/pkg/widgets/wifitable/sort"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
@@ -26,22 +30,15 @@ var (
 
 type Model struct {
 	table.Model
-	viewport        viewport.Model
-	dataSource      ds.NetworkProvider
-	networks        netdata.Slice
-	colors          map[netdata.Key]color.HexColor
-	associated      netdata.Key
-	selected        netdata.Key
-	stationViewMode Cycler[StationViewMode]
-	signalViewMode  Cycler[SignalViewMode]
-	sort            Sort
-	keys            KeyMap
-}
-
-func defaultViewMode() (Sort, Cycler[SignalViewMode], Cycler[StationViewMode]) {
-	return SortBy(ColumnBarsKey)(DESC),
-		BarsViewMode.Cycle(),
-		BSSIDViewMode.Cycle()
+	viewport   viewport.Model
+	dataSource ds.NetworkProvider
+	networks   netdata.Slice
+	colors     map[netdata.Key]color.HexColor
+	associated netdata.Key
+	selected   netdata.Key
+	columns    []column.Column
+	sort       sort.Sort
+	keys       KeyMap
 }
 
 type Option func(*Model)
@@ -59,12 +56,11 @@ func WithAssociated(key netdata.Key) Option {
 }
 
 func New(opts ...Option) *Model {
-	sort, signalViewMode, stationViewMode := defaultViewMode()
-	// cols := append([]table.Column{colorColumn()}, GenerateColumns(sort, signalViewMode.Current())...)
-	cols := GenerateColumns(sort, signalViewMode.Current(), stationViewMode.Current())
+	sort := defaultSort()
+	cols := columns()
 
 	keys := NewKeyMap()
-	t := table.New(cols).
+	t := table.New(column.Converter(cols)(sort)).
 		Border(table.Border{}).
 		WithPageSize(defaultTableHeight).
 		WithPaginationWrapping(false).
@@ -76,15 +72,14 @@ func New(opts ...Option) *Model {
 		Focused(true)
 
 	m := &Model{
-		Model:           t,
-		viewport:        viewport.New(defaultTableWidth, defaultTableHeight+2),
-		keys:            keys,
-		stationViewMode: stationViewMode,
-		signalViewMode:  signalViewMode,
-		sort:            sort,
-		networks:        netdata.Slice{},
-		colors:          map[netdata.Key]color.HexColor{},
-		dataSource:      ds.EmptyProvider{},
+		Model:      t,
+		viewport:   viewport.New(defaultTableWidth, defaultTableHeight+2),
+		keys:       keys,
+		columns:    cols,
+		sort:       sort,
+		networks:   netdata.Slice{},
+		colors:     map[netdata.Key]color.HexColor{},
+		dataSource: ds.EmptyProvider{},
 	}
 
 	for _, opt := range opts {
@@ -107,4 +102,49 @@ func (m *Model) View() string {
 		lipgloss.JoinVertical(lipgloss.Left, m.Model.View()),
 	)
 	return m.viewport.View()
+}
+
+// Returns table width calculated by width of visible simple columns.
+func (m *Model) tableWidth() int {
+	width := 0
+	for _, col := range m.columns {
+		width += col.Width()
+	}
+
+	return width
+}
+
+// Searches a simple column with requested key. If not found uses default @SSIDKey.
+// Returns generator which accepts sorting order to build Sort definition.
+func sortBy(key string) func(ord order.Dir) sort.Sort {
+	// column := GenerateColumns()[key]
+	cols := simpleColumns()
+
+	col, found := cols[key]
+	if !found {
+		log.Warnf("column key %s not found to sort table, using default %s", key, SSIDKey)
+		col = cols[SSIDKey]
+	}
+
+	return func(ord order.Dir) sort.Sort {
+		return sort.New(key, col.Sorter()).WithOrder(ord)
+	}
+}
+
+// Returns default Sort for the table.
+func defaultSort() sort.Sort {
+	return sortBy(BarsKey)(order.DESC)
+}
+
+// Returns all keys of simple columns visible as of now.
+func visibleColumnKeys(cols []column.Column) []string {
+	keys := make([]string, len(cols))
+
+	i := 0
+	for _, col := range cols {
+		keys[i] = col.Key()
+		i++
+	}
+
+	return keys
 }

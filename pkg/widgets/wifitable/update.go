@@ -4,13 +4,14 @@ import (
 	"strconv"
 	log "wfmon/pkg/logger"
 	"wfmon/pkg/widgets"
+	column "wfmon/pkg/widgets/wifitable/col"
+	order "wfmon/pkg/widgets/wifitable/ord"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func (m *Model) Init() tea.Cmd {
-	// return refreshTick(m.dataSource, defaultRefreshInterval)
 	return refreshTick(defaultRefreshInterval)
 }
 
@@ -21,7 +22,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	)
 
 	// returns event with selected network key
-	var onSelectedCmd = func() func() tea.Msg {
+	var onSelectedCmd = func() tea.Cmd {
 		cursor := m.GetHighlightedRowIndex()
 
 		// no data
@@ -51,13 +52,76 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	}
 
 	// returns event with new table width
-	var onResizeCmd = func() func() tea.Msg {
-		enums := []Keyer{
-			m.signalViewMode.Current(),
-			m.stationViewMode.Current(),
-		}
+	var onResizeCmd = func() tea.Cmd {
 		return func() tea.Msg {
-			return widgets.TableWidthMsg(tableWidth(enums...))
+			return widgets.TableWidthMsg(m.tableWidth())
+		}
+	}
+
+	// Rotates column in @Multiple column view.
+	// Refresh table and send resize and select events.
+	var onCycleColumn = func(colIdx int) tea.Cmd {
+		return func() tea.Msg {
+			col := m.columns[colIdx]
+			prevKey := col.Key()
+
+			if c, ok := col.(column.Cycler); !ok {
+				return nil
+			} else {
+				col = c.Next()
+			}
+
+			if m.sort.Key() == prevKey {
+				m.sort = sortBy(col.Key())(m.sort.Order())
+			}
+
+			m.columns[colIdx] = col
+
+			// apply current sorting
+			m.sort.Sort(m.networks)
+			// refresh table
+			m.refresh()
+			// send event about table width and cursort change
+			return tea.Batch(onResizeCmd(), onSelectedCmd())
+
+		}
+	}
+
+	// Sorts table by column index.
+	// Numbering starts from SSID column.
+	var onSortColumn = func(msg tea.KeyMsg) tea.Cmd {
+		return func() tea.Msg {
+			var num, idx int
+			var err error
+			if num, err = strconv.Atoi(msg.String()); err != nil {
+				log.Warnf("failed to sort, %w", err)
+				return nil
+			}
+
+			// Column number starts from 1
+			// Hash column is not registered for sorting
+			idx = num
+
+			keys := visibleColumnKeys(m.columns)
+			if idx < 0 || idx >= len(keys) {
+				log.Warnf("unsupported sort key, %d", num)
+				return nil
+			}
+
+			key := keys[idx]
+			// swap order for current column
+			if m.sort.Key() == key {
+				m.sort = m.sort.SwapOrder()
+			} else {
+				// ASC order for new column
+				m.sort = sortBy(key)(order.ASC)
+			}
+
+			// Immediately apply current sorting for networks
+			m.sort.Sort(m.networks)
+
+			m.refresh()
+			return tea.Batch(onSelectedCmd())
 		}
 	}
 
@@ -92,33 +156,13 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			cmds = append(cmds, onSelectedCmd())
 
 		case key.Matches(msg, m.keys.SignalView):
-			prevKey := m.signalViewMode.Current().Key()
-			m.signalViewMode = m.signalViewMode.Next()
-			if m.sort.key == prevKey {
-				m.sort = SortBy(m.signalViewMode.Current().Key())(m.sort.ord)
-			}
-			// apply current sorting
-			m.sort.Sort(m.networks)
-			// refresh table
-			m.refresh()
-			// send event about table width and cursort change
-			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
+			cmds = append(cmds, onCycleColumn(SignalMColumnIdx))
 
 		case key.Matches(msg, m.keys.StationView):
-			prevKey := m.stationViewMode.Current().Key()
-			m.stationViewMode = m.stationViewMode.Next()
-			if m.sort.key == prevKey {
-				m.sort = SortBy(m.stationViewMode.Current().Key())(m.sort.ord)
-			}
-			// apply current sorting
-			m.sort.Sort(m.networks)
-			// refresh table
-			m.refresh()
-			// send event about table width and cursort change
-			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
+			cmds = append(cmds, onCycleColumn(StationMColumnIdx))
 
 		case key.Matches(msg, m.keys.Reset):
-			m.sort, m.signalViewMode, m.stationViewMode = defaultViewMode()
+			m.sort = defaultSort()
 			// apply current sorting
 			m.sort.Sort(m.networks)
 			// refresh table
@@ -127,10 +171,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.Sort):
-			if m.sortBy(msg) {
-				m.refresh()
-				cmds = append(cmds, onSelectedCmd())
-			}
+			cmds = append(cmds, onSortColumn(msg))
 		}
 
 	case refreshMsg:
@@ -182,37 +223,4 @@ func (m *Model) gotoBottom() {
 	m.Model = m.
 		WithCurrentPage(m.MaxPages() - 1).
 		WithHighlightedRow(len(m.GetVisibleRows()) - 1)
-}
-
-func (m *Model) sortBy(msg tea.KeyMsg) bool {
-	var num, idx int
-	var err error
-	if num, err = strconv.Atoi(msg.String()); err != nil {
-		log.Warnf("failed to sort, %w", err)
-		return false
-	}
-
-	idx = num - 1
-	keys := VisibleColumnsKeys(
-		m.stationViewMode.Current(),
-		m.signalViewMode.Current(),
-	)
-	if idx < 0 || idx >= len(keys) {
-		log.Warnf("unsupported sort key, %d", num)
-		return false
-	}
-
-	key := keys[idx]
-	// swap order for current column
-	if m.sort.key == key {
-		m.sort.SwapOrder()
-	} else {
-		// ASC order for new column
-		m.sort = SortBy(key)(ASC)
-	}
-
-	// Immediately apply current sorting for networks
-	m.sort.Sort(m.networks)
-
-	return true
 }
