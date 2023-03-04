@@ -142,6 +142,12 @@ func (p *PacketDiscover) DiscoverIEs() *InformationElements {
 			}
 			ie.discoverHTIE(dot11info)
 
+		case layers.Dot11InformationElementIDVHTOperation:
+			if ie == nil {
+				ie = &InformationElements{}
+			}
+			ie.discoverVHTIE(dot11info)
+
 		case layers.Dot11InformationElementIDDSSet:
 			if ie == nil {
 				ie = &InformationElements{}
@@ -166,12 +172,21 @@ func (p *PacketDiscover) DiscoverIEs() *InformationElements {
 // 	}
 // }
 
-// Discovers HT Operations from Information Element.
+// Discovers HT Operation from Information Element.
 func (ie *InformationElements) discoverHTIE(dot11info *layers.Dot11InformationElement) {
-	ie.HTOperationsIE = HTOperationsIE{
+	ie.HTOperationIE = HTOperationIE{
 		PrimaryChannel:         dot11info.Contents[2],
 		SecondaryChannelOffset: dot11info.Contents[3] & 0b00000011,        //nolint:gomnd // ignore
 		SupportedChannelWidth:  (dot11info.Contents[3] & 0b00000100) >> 2, //nolint:gomnd // ignore
+	}
+}
+
+// Discovers VHT Operation from Information Element.
+func (ie *InformationElements) discoverVHTIE(dot11info *layers.Dot11InformationElement) {
+	ie.VHTOperationIE = VHTOperationIE{
+		ChannelWidth:          dot11info.Contents[2],
+		ChannelCenterSegment0: dot11info.Contents[3],
+		ChannelCenterSegment1: dot11info.Contents[4],
 	}
 }
 

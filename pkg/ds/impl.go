@@ -159,7 +159,7 @@ func (frame frameConverter) Network() *netdata.Network {
 		SNR:  entry.SNR,
 	}.SignalQuality()
 	entry.Band = wifi.GetBandByChan(frame.Channel)
-	entry.ChannelWidth = wifi.GetBondingWidth(frame.Channel, frame.SecondaryChannelOffset)
+	entry.ChannelWidth = wifi.GetBondingWidth(wifi.Frame(frame))
 
 	return entry
 }

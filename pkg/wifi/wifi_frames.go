@@ -64,11 +64,18 @@ func NewDot11Frame(dot11Type layers.Dot11Type, addrs ...net.HardwareAddr) *Dot11
 	}
 }
 
-// High Throughput Operations Information Element.
-type HTOperationsIE struct {
+// High Throughput Operations Information Element (tag).
+type HTOperationIE struct {
 	PrimaryChannel         uint8
-	SecondaryChannelOffset uint8
-	SupportedChannelWidth  uint8
+	SecondaryChannelOffset uint8 // 0 - no; 1/3 - above/below; 2 - reserved
+	SupportedChannelWidth  uint8 // 1 - Channel of any width supported
+}
+
+// Very High Throughput Operation Information Element (tag).
+type VHTOperationIE struct {
+	ChannelWidth          uint8 // 0 - 20 MHz or 40 MHz BSS Bandwidth; 1 - 80 MHz, 160 MHz or 80+80 MHz BSS Bandwidth
+	ChannelCenterSegment0 uint8
+	ChannelCenterSegment1 uint8 // ?
 }
 
 type DSSetIE struct {
@@ -80,14 +87,15 @@ type SSIDIE struct {
 }
 
 type InformationElements struct {
-	HTOperationsIE // optional
+	HTOperationIE  // optional
+	VHTOperationIE // optional
 	DSSetIE        // optional
 	// SSIDIE         // optional
 }
 
 func (ie *InformationElements) String() string {
 	// return fmt.Sprintf("HT:%+v DS:%+v SSID:%+v", ie.HTOperationsIE, ie.DSSetIE, ie.SSIDIE)
-	return fmt.Sprintf("HT:%+v DS:%+v", ie.HTOperationsIE, ie.DSSetIE)
+	return fmt.Sprintf("HT:%+v VHT:%+v DS:%+v", ie.HTOperationIE, ie.VHTOperationIE, ie.DSSetIE)
 }
 
 // Management frame.

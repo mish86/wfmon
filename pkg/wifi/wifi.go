@@ -16,6 +16,7 @@ func (b Band) String() string {
 }
 
 // Returns '2.4GHz' or '5GHz'.
+// TODO: review and actualize bounds.
 func GetBandByChan(channel uint8) Band {
 	switch {
 	case channel >= 1 && channel <= 14:
@@ -45,8 +46,9 @@ func (o SecondaryChannelOffset) String() string {
 	return []string{SCN: "SCN", SCA: "SCA", Reserved: "RSRVD", SCB: "SCB"}[o]
 }
 
-func GetBondingWidth(channel, offset uint8) uint16 {
-	band := GetBandByChan(channel)
+// Returns width in MHz.
+func GetBondingWidth(frame Frame) uint16 {
+	band := GetBandByChan(frame.Channel)
 	// Unknown bandwidth
 	if band == Unknown {
 		return 0
@@ -55,27 +57,34 @@ func GetBondingWidth(channel, offset uint8) uint16 {
 	// No bonding
 	var bondingMultiplier uint16 = 1
 
-	if offsetEnum := SecondaryChannelOffset(offset); offsetEnum == SCA || offsetEnum == SCB {
+	if offsetEnum := SecondaryChannelOffset(frame.SecondaryChannelOffset); offsetEnum == SCA || offsetEnum == SCB {
 		// bonding
 		bondingMultiplier = 2
 	}
 
-	// ISM bonding
+	// ISM bonding, 20 Mhz or 40 Mhz
 	if band == ISM {
-		return bondingMultiplier * getISMWidth(channel)
+		return bondingMultiplier * getISMWidth(frame.Channel)
 	}
 
-	// UNII bonding
-	return bondingMultiplier * getUNIIWidth(channel)
+	// UNII bonding, HT, 20 Mhz or 40 Mhz
+	if frame.ChannelWidth == 0 {
+		return bondingMultiplier * getUNIIWidth(frame.Channel)
+	}
+
+	// UNII bonding, VHT, 80 Mhz or 160 Mhz or 80 + 80 Mhz
+	return getUNIIWidth(frame.ChannelCenterSegment0)
 }
 
 // ISM bonding width.
+// Returns width in MHz.
 func getISMWidth(channel uint8) uint16 {
 	//nolint:gomnd // ignore
 	return 20
 }
 
 // UNII bonding width.
+// Returns width in MHz.
 func getUNIIWidth(channel uint8) uint16 {
 	//nolint:gomnd // ignore
 	switch channel {
