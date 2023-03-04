@@ -42,87 +42,86 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 
 		// broadcast event to other widgets about changed selection
+		k := m.networks[cursor].Key()
+		c := m.colors[k]
 		return func() tea.Msg {
-			key := m.networks[cursor].Key()
+			// key := m.networks[cursor].Key()
 			return widgets.NetworkKeyMsg{
-				Key:   key,
-				Color: m.colors[key],
+				Key:   k,
+				Color: c,
 			}
 		}
 	}
 
 	// returns event with new table width
 	var onResizeCmd = func() tea.Cmd {
+		w := m.tableWidth()
 		return func() tea.Msg {
-			return widgets.TableWidthMsg(m.tableWidth())
+			return widgets.TableWidthMsg(w)
 		}
 	}
 
 	// Rotates column in @Multiple column view.
 	// Refresh table and send resize and select events.
 	var onCycleColumn = func(colIdx int) tea.Cmd {
-		return func() tea.Msg {
-			col := m.columns[colIdx]
-			prevKey := col.Key()
+		col := m.columns[colIdx]
+		prevKey := col.Key()
 
-			if c, ok := col.(column.Cycler); !ok {
-				return nil
-			} else {
-				col = c.Next()
-			}
-
-			if m.sort.Key() == prevKey {
-				m.sort = sortBy(col.Key())(m.sort.Order())
-			}
-
-			m.columns[colIdx] = col
-
-			// apply current sorting
-			m.sort.Sort(m.networks)
-			// refresh table
-			m.refresh()
-			// send event about table width and cursort change
-			return tea.Batch(onResizeCmd(), onSelectedCmd())
-
+		if c, ok := col.(column.Cycler); !ok {
+			return nil
+		} else {
+			col = c.Next()
 		}
+
+		if m.sort.Key() == prevKey {
+			m.sort = sortBy(col.Key())(m.sort.Order())
+		}
+
+		m.columns[colIdx] = col
+
+		// apply current sorting and refresh table
+		m.sort.Sort(m.networks)
+		m.refresh()
+
+		// send event about table width and cursort change
+		return tea.Batch(onResizeCmd(), onSelectedCmd())
+		// return onResizeCmd()
 	}
 
 	// Sorts table by column index.
 	// Numbering starts from SSID column.
 	var onSortColumn = func(msg tea.KeyMsg) tea.Cmd {
-		return func() tea.Msg {
-			var num, idx int
-			var err error
-			if num, err = strconv.Atoi(msg.String()); err != nil {
-				log.Warnf("failed to sort, %w", err)
-				return nil
-			}
-
-			// Column number starts from 1
-			// Hash column is not registered for sorting
-			idx = num
-
-			keys := visibleColumnKeys(m.columns)
-			if idx < 0 || idx >= len(keys) {
-				log.Warnf("unsupported sort key, %d", num)
-				return nil
-			}
-
-			key := keys[idx]
-			// swap order for current column
-			if m.sort.Key() == key {
-				m.sort = m.sort.SwapOrder()
-			} else {
-				// ASC order for new column
-				m.sort = sortBy(key)(order.ASC)
-			}
-
-			// Immediately apply current sorting for networks
-			m.sort.Sort(m.networks)
-
-			m.refresh()
-			return tea.Batch(onSelectedCmd())
+		var num, idx int
+		var err error
+		if num, err = strconv.Atoi(msg.String()); err != nil {
+			log.Warnf("failed to sort, %w", err)
+			return nil
 		}
+
+		// Column number starts from 1
+		// Hash column is not registered for sorting
+		idx = num
+
+		keys := visibleColumnKeys(m.columns)
+		if idx < 0 || idx >= len(keys) {
+			log.Warnf("unsupported sort key, %d", num)
+			return nil
+		}
+
+		key := keys[idx]
+		// swap order for current column
+		if m.sort.Key() == key {
+			m.sort = m.sort.SwapOrder()
+		} else {
+			// ASC order for new column
+			m.sort = sortBy(key)(order.ASC)
+		}
+
+		// apply current sorting and refresh table
+		m.sort.Sort(m.networks)
+		m.refresh()
+
+		return onSelectedCmd()
 	}
 
 	m.Model, cmd = m.Model.Update(msg)
@@ -162,6 +161,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			cmds = append(cmds, onCycleColumn(StationMColumnIdx))
 
 		case key.Matches(msg, m.keys.Reset):
+			// reset columns view
+			m.columns = columns()
+			// reset sorting
 			m.sort = defaultSort()
 			// apply current sorting
 			m.sort.Sort(m.networks)

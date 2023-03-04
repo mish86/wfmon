@@ -22,7 +22,7 @@
 - [ ] Add an option to start program with analyze of given pcap file and end execution. -f --file.
 - [ ] Sniffering with timeout, print simple output and end program execution. -p --print columns; -t --timeout.
 - [ ] ?Add packets received line above the table.
-- [ ] ?Verbose flag to print logs bloe the table. -v
+- [ ] ?Verbose flag to print logs below the table. -v
 - [ ] Add Info (with more data) widget of selected network on right table side.
 - [ ] Add sectrum chart right below table.
 - [ ] Add RSSI/Quality/Bars line chart right below table.

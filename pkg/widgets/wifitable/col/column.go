@@ -40,5 +40,4 @@ func Converter(columns []Column) func(sort sort.Sort) []table.Column {
 
 		return cols
 	}
-
 }
