@@ -26,26 +26,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// returns event with selected network key
 	var onSelectedCmd = func() tea.Cmd {
-		cursor := m.GetHighlightedRowIndex()
-
-		// no data
-		if len(m.networks) == 0 {
-			return nil
-		}
-
-		// out of bounds
-		if cursor < 0 || cursor >= len(m.networks) {
-			log.Errorf("cursor %d out of bounds networks: %v", cursor, m.networks)
-			return nil
-		}
-
-		// cursor not changed
-		if m.selected.Compare(m.networks[cursor].Key()) == 0 {
-			return nil
-		}
+		net := m.GetSelectedNetwork()
 
 		// broadcast event to other widgets about changed selection
-		k := m.networks[cursor].Key()
+		k := net.Key()
 		c := m.colors[k]
 		return func() tea.Msg {
 			// key := m.networks[cursor].Key()
@@ -58,7 +42,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// returns event with new table width
 	var onResizeCmd = func() tea.Cmd {
-		w := m.TableWidth()
+		w := m.Width()
 		return func() tea.Msg {
 			return events.TableWidthMsg(w)
 		}

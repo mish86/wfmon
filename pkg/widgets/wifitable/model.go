@@ -34,10 +34,10 @@ type Model struct {
 	networks   netdata.Slice
 	colors     map[netdata.Key]color.HexColor
 	associated netdata.Key
-	selected   netdata.Key
-	columns    []column.Column
-	sort       column.Sort
-	keys       KeyMap
+	// selected   netdata.Key
+	columns []column.Column
+	sort    column.Sort
+	keys    KeyMap
 }
 
 type Option func(*Model)
@@ -109,8 +109,13 @@ func (m *Model) View() string {
 	return m.viewport.View()
 }
 
+func (m *Model) SetWidth(w int) {
+	m.Model.WithMaxTotalWidth(w)
+	m.viewport.Width = w
+}
+
 // Returns table width calculated by width of visible simple columns.
-func (m *Model) TableWidth() int {
+func (m *Model) Width() int {
 	width := 0
 	for _, col := range m.columns {
 		width += col.Width()
@@ -151,4 +156,23 @@ func visibleColumnKeys(cols []column.Column) []string {
 	}
 
 	return keys
+}
+
+func (m *Model) GetSelectedNetwork() netdata.Network {
+	cursor := m.GetHighlightedRowIndex()
+
+	// FIXME: race at access to networks
+
+	// no data
+	if len(m.networks) == 0 {
+		return netdata.Network{}
+	}
+
+	// out of bounds
+	if cursor < 0 || cursor >= len(m.networks) {
+		log.Errorf("cursor %d out of bounds networks: %v", cursor, m.networks)
+		return netdata.Network{}
+	}
+
+	return m.networks[cursor]
 }

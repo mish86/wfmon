@@ -20,19 +20,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	var changeViewOnSelect = func() {
-		for i := range m.data {
-			if m.selected.Compare(m.data[i].Key) == 0 {
-				m.SetBandView(m.data[i].Band)
-			}
-		}
-	}
+	// var changeViewOnSelect = func() {
+	// 	for i := range m.data {
+	// 		if m.selected.Compare(m.data[i].Key) == 0 {
+	// 			m.SetBandView(m.data[i].Band)
+	// 		}
+	// 	}
+	// }
 
 	switch msg := msg.(type) {
 	case events.NetworkKeyMsg:
 		m.selected = msg.Key
 		// auto-change band view for selected network
-		changeViewOnSelect()
+		// changeViewOnSelect()
 		// render data to viewport
 		m.refresh()
 

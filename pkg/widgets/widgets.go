@@ -8,3 +8,8 @@ type WithFocus interface {
 	Focused(focus bool)
 	GetFocused() bool
 }
+
+type WithWidth interface {
+	SetWidth(w int)
+	Width() int
+}

@@ -149,6 +149,10 @@ func (m *Model) SetWidth(w int) {
 	m.SetDimension(w, m.viewport.Height)
 }
 
+func (m *Model) Width() int {
+	return m.viewport.Width
+}
+
 func (m *Model) SetHeight(h int) {
 	m.SetDimension(m.viewport.Width, h)
 }
@@ -209,11 +213,11 @@ func (m *Model) View() string {
 // Returns axe Y start point.
 // Y axe vector from bottom to top.
 func (m *Model) viewAxeYStart() string {
-	return fmt.Sprintf("%.f┐", cmp.Max(0.0, m.maxVal-m.modifier(m.maxVal)))
+	return fmt.Sprintf("%.f┑", cmp.Max(0.0, m.maxVal-m.modifier(m.maxVal)))
 }
 
 // Returns axe Y start point.
 // Y axe vector from bottom to top.
 func (m *Model) viewAxeYEnd() string {
-	return fmt.Sprintf("%.f┘", cmp.Min(0.0, m.minVal-m.modifier(m.minVal)))
+	return fmt.Sprintf("%.f┙", cmp.Min(0.0, m.minVal-m.modifier(m.minVal)))
 }

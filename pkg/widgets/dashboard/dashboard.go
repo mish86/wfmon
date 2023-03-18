@@ -83,16 +83,10 @@ func New(opts ...Option) *Model {
 		opt(m)
 	}
 
-	m.width = m.table.TableWidth()
+	m.width = m.table.Width()
 	m.chart = m.sparkline
 
 	return m
-}
-
-func (m *Model) chartFocused(focus bool) {
-	if chart, ok := m.chart.(widgets.WithFocus); ok {
-		chart.Focused(focus)
-	}
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -108,6 +102,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	var chartFocused = func(focus bool) {
+		if chart, ok := m.chart.(widgets.WithFocus); ok {
+			chart.Focused(focus)
+		}
+	}
+
+	var onChartRefresh = func() tea.Cmd {
+		w := m.width
+
+		return func() tea.Msg {
+			return events.TableWidthMsg(w)
+		}
+	}
 
 	if m.table.GetFocused() {
 		model, cmd := m.table.Update(msg)
@@ -138,18 +146,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = int(msg)
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, m.table.KeyMap().RowSelectToggle):
+			if m.chart == m.spectrum {
+				m.spectrum.SetBandView(m.table.GetSelectedNetwork().Band)
+				cmds = append(cmds, onChartRefresh())
+			}
 		case key.Matches(msg, m.keys.Sparkline):
-			m.chartFocused(false)
+			chartFocused(false)
 			m.chart = m.sparkline
-			m.chartFocused(true)
+			chartFocused(true)
+			cmds = append(cmds, onChartRefresh())
 
 		case key.Matches(msg, m.keys.Spectrum):
+			chartFocused(false)
 			if m.chart == m.spectrum {
 				m.spectrum.NextBandView()
 			}
-			m.chartFocused(false)
 			m.chart = m.spectrum
-			m.chartFocused(true)
+			chartFocused(true)
+			cmds = append(cmds, onChartRefresh())
 
 		case key.Matches(msg, m.keys.Help):
 			m.helpShown = !m.helpShown

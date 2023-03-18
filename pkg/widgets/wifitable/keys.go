@@ -30,6 +30,10 @@ func NewKeyMap() KeyMap {
 				key.WithKeys("shift+right"),
 				key.WithHelp("shift+→", "scroll right"),
 			),
+			RowSelectToggle: key.NewBinding(
+				key.WithKeys(" ", "enter"),
+				key.WithHelp("⏎", "select row"),
+			),
 		},
 		PageUp: key.NewBinding(
 			key.WithKeys("left", "b", "pgup"),
@@ -75,9 +79,9 @@ func NewKeyMap() KeyMap {
 }
 
 func (k *KeyMap) MoveBindings() []key.Binding {
-	return []key.Binding{k.RowUp, k.RowDown, k.PageUp, k.PageDown, k.GotoTop, k.GotoBottom}
+	return []key.Binding{k.RowUp, k.RowDown, k.PageUp, k.PageDown, k.ScrollLeft, k.ScrollRight, k.GotoTop, k.GotoBottom}
 }
 
 func (k *KeyMap) ViewBindings() []key.Binding {
-	return []key.Binding{k.Sort, k.Reset, k.StationView, k.SignalView}
+	return []key.Binding{k.Sort, k.Reset, k.StationView, k.SignalView, k.RowSelectToggle}
 }

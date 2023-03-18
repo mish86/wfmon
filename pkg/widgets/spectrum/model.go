@@ -88,6 +88,10 @@ func (m *Model) SetWidth(w int) {
 	m.viewport.Width = w
 }
 
+func (m *Model) Width() int {
+	return m.viewport.Width
+}
+
 func (m *Model) SetMinVal(val float64) {
 	m.minVal = val
 }
@@ -119,9 +123,6 @@ func (m *Model) NextBandView() {
 	}
 
 	m.band = wifi.Band(b)
-
-	// TODO move to event
-	m.refresh()
 }
 
 func (m *Model) Title() string {
