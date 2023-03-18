@@ -21,9 +21,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	var changeViewOnSelect = func() {
-		for i := range m.waves {
-			if m.selected.Compare(m.waves[i].Key) == 0 {
-				m.SetBandView(m.waves[i].Band)
+		for i := range m.data {
+			if m.selected.Compare(m.data[i].Key) == 0 {
+				m.SetBandView(m.data[i].Band)
 			}
 		}
 	}
@@ -52,7 +52,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// convert to waves to display
-		m.waves = MultiWaver(events.NetworksOnScreen{
+		m.data = MultiWaver(events.NetworksOnScreen{
 			Networks: nets,
 			Colors:   colors,
 		}).Waves()

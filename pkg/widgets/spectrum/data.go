@@ -16,14 +16,13 @@ const (
 )
 
 type Wave struct {
-	Key            netdata.Key // network key
-	Band           wifi.Band   // ISM or UNII
-	Value          int         // RSSI or Quality
-	PrimaryChannel uint8       // primary channel
-	// SecondaryChannel uint8          // secondary channel
-	Sign  int8           // secondary channel: +1 above / -1 below
-	Width uint8          // channels number in a wave
-	Color lipgloss.Color // spectrum color
+	Key            netdata.Key    // network key
+	Band           wifi.Band      // ISM or UNII
+	Value          float64        // RSSI or Quality
+	PrimaryChannel uint8          // primary channel
+	Sign           int8           // secondary channel: +1 above / -1 below
+	Width          uint8          // channels number in a wave
+	Color          lipgloss.Color // spectrum color
 }
 
 func (wave *Wave) LowerChannel() uint8 {
@@ -59,7 +58,7 @@ func (c Waver) Wave() Wave {
 	return Wave{
 		Key:            net.Key(),
 		Band:           net.Band,
-		Value:          int(net.RSSI),
+		Value:          float64(net.RSSI),
 		PrimaryChannel: net.Channel,
 		Sign:           sign,
 		Width:          uint8(net.ChannelWidth / wave20Mhz),

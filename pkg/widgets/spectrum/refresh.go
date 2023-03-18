@@ -81,9 +81,9 @@ func (m *Model) refresh() {
 
 func (m *Model) refreshByBand() {
 	filtered := []Wave{}
-	for i := range m.waves {
-		if m.band == m.waves[i].Band {
-			filtered = append(filtered, m.waves[i])
+	for i := range m.data {
+		if m.band == m.data[i].Band {
+			filtered = append(filtered, m.data[i])
 		}
 	}
 
@@ -122,8 +122,8 @@ func (m *Model) refreshByBand() {
 	if len(filtered) == 1 {
 		selected = &filtered[0]
 	} else {
-		for i := range m.waves {
-			w := m.waves[i]
+		for i := range m.data {
+			w := m.data[i]
 			if m.band != w.Band {
 				continue
 			}
@@ -151,10 +151,10 @@ func (m *Model) refreshByBand() {
 
 // Returns rects for wave of primary and secondary channels.
 // Secondary channel wave rect is optional.
-func (wave *Wave) rects(xy0, view image.Point, xScale, yMinVal int) (image.Rectangle, image.Rectangle) {
+func (wave *Wave) rects(xy0, view image.Point, xScale int, yMinVal float64) (image.Rectangle, image.Rectangle) {
 	w := int(wave.Width) * wave20MhzWidth * xScale
 	w1 := wave20MhzWidth * xScale
-	h := view.Y - int(math.Floor(float64(view.Y*wave.Value)/float64(yMinVal)))
+	h := view.Y - int(math.Floor(float64(view.Y)*wave.Value/yMinVal))
 	leftMargin := xy0.X + (int(wave.LowerChannel())-halfOfWave20MhzWidth)*xScale
 	bottomMargin := xy0.Y
 

@@ -20,12 +20,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.NetworkKeyMsg:
 		m.SetNetworkKey(msg.Key)
 		m.SetColor(msg.Color.Lipgloss())
-		m.sparkline.Data = m.getData()
+		m.data = m.getData()
 		m.refresh()
 
 	case events.FieldMsg:
 		m.SetFieldKey(string(msg))
-		m.sparkline.Data = m.getData()
+		m.data = m.getData()
 		m.refresh()
 
 	case events.TableWidthMsg:

@@ -54,6 +54,12 @@ func WithAssociated(key netdata.Key) Option {
 	}
 }
 
+func WithFocused(focus bool) Option {
+	return func(m *Model) {
+		m.Focused(focus)
+	}
+}
+
 func New(opts ...Option) *Model {
 	sort := defaultSort()
 	cols := columns()

@@ -10,8 +10,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	tui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 )
 
 const (
@@ -31,19 +29,18 @@ var (
 
 type Model struct {
 	viewport viewport.Model
+	focused  bool
 
-	sparkline      *widgets.Sparkline
-	sparklineGroup *widgets.SparklineGroup
-	color          lipgloss.Color
-	axesShown      bool
+	data      []float64
+	minVal    float64
+	maxVal    float64
+	modifier  func(float64) float64
+	color     lipgloss.Color
+	axesShown bool
 
 	fieldKey   string
 	netKey     netdata.Key
 	dataSource ds.TimeSeriesProvider
-
-	minVal   float64
-	maxVal   float64
-	modifier func(float64) float64
 }
 
 type Option func(*Model)
@@ -96,26 +93,23 @@ func WithYAxe(shown bool) Option {
 	}
 }
 
+func WithFocused(focus bool) Option {
+	return func(m *Model) {
+		m.Focused(focus)
+	}
+}
+
 func New(opts ...Option) *Model {
-	sparkline := widgets.NewSparkline()
-	sparkline.LineColor = tui.ColorGreen
-	sparkline.MaxVal = 0
-
-	sparklineGroup := widgets.NewSparklineGroup(sparkline)
-	sparklineGroup.Title = ""
-	sparklineGroup.Border = false
-	sparklineGroup.SetRect(0, 0, defaultWidth, defaultHeight)
-
 	m := &Model{
-		viewport:       viewport.New(defaultWidth, defaultHeight),
-		sparkline:      sparkline,
-		sparklineGroup: sparklineGroup,
-		color:          defaultColor,
-		axesShown:      false,
-		dataSource:     ds.EmptyProvider{},
-		minVal:         0,
-		maxVal:         sparkline.MaxVal,
-		modifier:       func(v float64) float64 { return v },
+		viewport:   viewport.New(defaultWidth, defaultHeight),
+		focused:    true,
+		data:       []float64{},
+		minVal:     0,
+		maxVal:     0,
+		modifier:   func(v float64) float64 { return v },
+		color:      defaultColor,
+		axesShown:  false,
+		dataSource: ds.EmptyProvider{},
 	}
 
 	for _, opt := range opts {
@@ -149,12 +143,6 @@ func (m *Model) SetFieldKey(key string) {
 func (m *Model) SetDimension(w, h int) {
 	m.viewport.Width = w
 	m.viewport.Height = h
-	m.sparklineGroup.SetRect(
-		0, 0,
-		cmp.Nvl(m.axesShown, m.viewport.Width-1, m.viewport.Width),
-		// @see refresh
-		m.viewport.Height+1,
-	)
 }
 
 func (m *Model) SetWidth(w int) {
@@ -171,11 +159,18 @@ func (m *Model) SetMinVal(val float64) {
 
 func (m *Model) SetMaxVal(val float64) {
 	m.maxVal = val
-	m.sparkline.MaxVal = val
 }
 
 func (m *Model) SetModifier(f func(float64) float64) {
 	m.modifier = f
+}
+
+func (m *Model) Focused(focus bool) {
+	m.focused = focus
+}
+
+func (m *Model) GetFocused() bool {
+	return m.focused
 }
 
 func (m *Model) NetworkKey() netdata.Key {
@@ -194,7 +189,7 @@ func (m *Model) Title() string {
 // Axe Y takes extra 2 lines to viewport height.
 func (m *Model) View() string {
 	// do not display widget when no data
-	if len(m.sparkline.Data) == 0 {
+	if len(m.data) == 0 {
 		return ""
 	}
 

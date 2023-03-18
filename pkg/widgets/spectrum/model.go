@@ -16,23 +16,49 @@ const (
 
 type Model struct {
 	viewport       viewport.Model
-	waves          []Wave
+	focused        bool
 	band           wifi.Band
 	selected       netdata.Key
-	minVal, maxVal int
-	stepVal        int
+	data           []Wave
+	minVal, maxVal float64
+	stepVal        float64
 }
 
 type Option func(*Model)
 
+func WithSelected(key netdata.Key) Option {
+	return func(m *Model) {
+		m.Selected(key)
+	}
+}
+
+func WithFocused(focus bool) Option {
+	return func(m *Model) {
+		m.Focused(focus)
+	}
+}
+
+func WithMinVal(val float64) Option {
+	return func(m *Model) {
+		m.SetMinVal(val)
+	}
+}
+
+func WithMaxVal(val float64) Option {
+	return func(m *Model) {
+		m.SetMaxVal(val)
+	}
+}
+
 func New(opts ...Option) *Model {
 	m := &Model{
 		viewport: viewport.New(defaultWidth, defaultHeight),
-		waves:    []Wave{},
+		focused:  true,
 		band:     wifi.ISM,
+		data:     []Wave{},
 		minVal:   -100,
-		stepVal:  10,
 		maxVal:   0,
+		stepVal:  10,
 	}
 
 	for _, opt := range opts {
@@ -42,8 +68,32 @@ func New(opts ...Option) *Model {
 	return m
 }
 
+func (m *Model) Selected(key netdata.Key) {
+	m.selected = key
+}
+
+func (m *Model) GetSelected() netdata.Key {
+	return m.selected
+}
+
+func (m *Model) Focused(focus bool) {
+	m.focused = focus
+}
+
+func (m *Model) GetFocused() bool {
+	return m.focused
+}
+
 func (m *Model) SetWidth(w int) {
 	m.viewport.Width = w
+}
+
+func (m *Model) SetMinVal(val float64) {
+	m.minVal = val
+}
+
+func (m *Model) SetMaxVal(val float64) {
+	m.maxVal = val
 }
 
 func (m *Model) SetBandView(b wifi.Band) {
@@ -82,10 +132,10 @@ func (m *Model) View() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		m.viewAxeY(),
 		lipgloss.JoinVertical(lipgloss.Left,
-			fmt.Sprintf("%d", m.maxVal),
+			fmt.Sprintf("%3.f", m.maxVal),
 			m.viewport.View(),
 			m.viewAxeX(),
-			fmt.Sprintf("%d", m.minVal-m.stepVal),
+			fmt.Sprintf("%3.f", m.minVal-m.stepVal),
 		),
 	)
 }

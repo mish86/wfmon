@@ -167,19 +167,25 @@ func (app *Application) init(ctx context.Context) {
 	dataSource := ds.New(mon.GetFrames())
 	dashboard := dashboard.New(
 		dashboard.WithTable(wifitable.New(
+			wifitable.WithFocused(true),
 			wifitable.WithAssociated(netdata.NewKey(
 				app.associatedNetwork.BSSID,
 				app.associatedNetwork.SSID,
 			)),
 		)),
 		dashboard.WithSparkline(sparkline.New(
+			sparkline.WithFocused(true),
 			sparkline.WithField(netdata.RSSIKey),
 			sparkline.WithYAxe(true),
 			sparkline.WithMinVal(0),
 			sparkline.WithMaxVal(100),
 			sparkline.WithModifier(func(val float64) float64 { return val + 100 }),
 		)),
-		dashboard.WithSpectrum(spectrum.New()),
+		dashboard.WithSpectrum(spectrum.New(
+			spectrum.WithFocused(false),
+			spectrum.WithMinVal(-100),
+			spectrum.WithMaxVal(0),
+		)),
 		dashboard.WithDataSource(dataSource),
 		// dashboard.WithDataSource(ds.EmptyProvider{}),
 	)

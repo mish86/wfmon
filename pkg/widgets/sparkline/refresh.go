@@ -1,14 +1,14 @@
 package sparkline
 
 import (
-	"image"
-	"strings"
 	"time"
 	"wfmon/pkg/ts"
+	"wfmon/pkg/utils/cmp"
+	"wfmon/pkg/widgets"
+	"wfmon/pkg/widgets/buffer"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	tui "github.com/gizak/termui/v3"
 )
 
 type refreshMsg time.Time
@@ -32,40 +32,51 @@ func (m *Model) getData() ts.Vector {
 
 // Immediately renders data to viewport.
 func (m *Model) refresh() {
-	item := m.sparklineGroup
-	buf := tui.NewBuffer(item.GetRect())
-	item.Lock()
-	item.Draw(buf)
-	item.Unlock()
+	buf := buffer.New(m.viewport.Width, m.viewport.Height)
 
-	inlineStyle := lipgloss.NewStyle().Width(item.GetRect().Dx()).MaxWidth(item.GetRect().Dx()).Inline(true)
-	rowStyle := lipgloss.NewStyle().Foreground(m.color)
+	maxVal := m.maxVal
+	// if maxVal == 0 {
+	// 	maxVal, _ = GetMaxFloat64FromSlice(sl.Data)
+	// }
+	sparklineHeight := m.viewport.Height
 
-	// TODO: is first row always empty?
-	renderedRows := make([]string, item.GetRect().Dy()-1)
-	for y := 0; y < item.GetRect().Dy()-1; y++ {
-		row := strings.Builder{}
-		// reverse order: from right to left
-		for x := item.GetRect().Dx() - 1; x >= 0; x-- {
-			cell := buf.GetCell(image.Point{x, y})
-			row.WriteRune(cell.Rune)
+	bars := widgets.VBars()
+
+	// draw line
+	data := m.data
+	for i := 0; i < len(data); i++ {
+		x := m.viewport.Width - i - 1
+
+		fh := (data[i] / maxVal) * float64(sparklineHeight)
+		height := int(fh)
+
+		if height == 0 {
+			sparkChar := bars[1]
+			buf.SetCell(x, 0, sparkChar, m.color)
+			continue
 		}
-		rowText := row.String()
-		renderedRows[y] = rowText
-		renderedRows[y] = inlineStyle.Render(renderedRows[y])
-		renderedRows[y] = rowStyle.Render(renderedRows[y])
+
+		sparkChar := bars[len(bars)-1]
+		for y := 0; y < height-1; y++ {
+			buf.SetCell(x, y, sparkChar, m.color)
+		}
+
+		spike := bars[len(bars)-1]
+		r := int(fh*float64(10)) % 10
+		if r > 0 {
+			spike = bars[cmp.Min(r, len(bars)-1)]
+		}
+		buf.SetCell(x, height-1, spike, m.color)
 	}
 
-	m.viewport.SetContent(
-		lipgloss.JoinVertical(lipgloss.Right, renderedRows...),
-	)
+	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, buf.Rows()...))
 }
 
 // Handles refresh tick.
 // Fetches data from data source.
 // Applies in the chart.
 func (m *Model) onRefreshMsg(msg refreshMsg) {
-	m.sparkline.Data = m.getData()
+	m.data = m.getData()
 
 	m.refresh()
 }

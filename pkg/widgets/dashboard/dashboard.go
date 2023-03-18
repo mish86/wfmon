@@ -89,6 +89,12 @@ func New(opts ...Option) *Model {
 	return m
 }
 
+func (m *Model) chartFocused(focus bool) {
+	if chart, ok := m.chart.(widgets.WithFocus); ok {
+		chart.Focused(focus)
+	}
+}
+
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.table.Init(),
@@ -98,29 +104,34 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		model tea.Model
-		ok    bool
-		cmd   tea.Cmd
-		cmds  []tea.Cmd
+		ok bool
+		// cmd  tea.Cmd
+		cmds []tea.Cmd
 	)
 
-	model, cmd = m.table.Update(msg)
-	if m.table, ok = model.(*wifitable.Model); !ok {
-		log.Fatalf("wifi table update method returned unexpected model %v", model)
+	if m.table.GetFocused() {
+		model, cmd := m.table.Update(msg)
+		if m.table, ok = model.(*wifitable.Model); !ok {
+			log.Fatalf("wifi table update method returned unexpected model %v", model)
+		}
+		cmds = append(cmds, cmd)
 	}
-	cmds = append(cmds, cmd)
 
-	model, cmd = m.sparkline.Update(msg)
-	if m.sparkline, ok = model.(*sparkline.Model); !ok {
-		log.Fatalf("sparkline update method returned unexpected model %v", model)
+	if m.sparkline.GetFocused() {
+		model, cmd := m.sparkline.Update(msg)
+		if m.sparkline, ok = model.(*sparkline.Model); !ok {
+			log.Fatalf("sparkline update method returned unexpected model %v", model)
+		}
+		cmds = append(cmds, cmd)
 	}
-	cmds = append(cmds, cmd)
 
-	model, cmd = m.spectrum.Update(msg)
-	if m.spectrum, ok = model.(*spectrum.Model); !ok {
-		log.Fatalf("spectrum update method returned unexpected model %v", model)
+	if m.spectrum.GetFocused() {
+		model, cmd := m.spectrum.Update(msg)
+		if m.spectrum, ok = model.(*spectrum.Model); !ok {
+			log.Fatalf("spectrum update method returned unexpected model %v", model)
+		}
+		cmds = append(cmds, cmd)
 	}
-	cmds = append(cmds, cmd)
 
 	switch msg := msg.(type) {
 	case events.TableWidthMsg:
@@ -128,13 +139,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Sparkline):
+			m.chartFocused(false)
 			m.chart = m.sparkline
+			m.chartFocused(true)
 
 		case key.Matches(msg, m.keys.Spectrum):
 			if m.chart == m.spectrum {
 				m.spectrum.NextBandView()
 			}
+			m.chartFocused(false)
 			m.chart = m.spectrum
+			m.chartFocused(true)
 
 		case key.Matches(msg, m.keys.Help):
 			m.helpShown = !m.helpShown
