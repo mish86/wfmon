@@ -8,7 +8,6 @@ import (
 	"wfmon/pkg/widgets/color"
 	column "wfmon/pkg/widgets/wifitable/col"
 	order "wfmon/pkg/widgets/wifitable/ord"
-	"wfmon/pkg/widgets/wifitable/sort"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
@@ -37,7 +36,7 @@ type Model struct {
 	associated netdata.Key
 	selected   netdata.Key
 	columns    []column.Column
-	sort       sort.Sort
+	sort       column.Sort
 	keys       KeyMap
 }
 
@@ -105,7 +104,7 @@ func (m *Model) View() string {
 }
 
 // Returns table width calculated by width of visible simple columns.
-func (m *Model) tableWidth() int {
+func (m *Model) TableWidth() int {
 	width := 0
 	for _, col := range m.columns {
 		width += col.Width()
@@ -116,8 +115,7 @@ func (m *Model) tableWidth() int {
 
 // Searches a simple column with requested key. If not found uses default @SSIDKey.
 // Returns generator which accepts sorting order to build Sort definition.
-func sortBy(key string) func(ord order.Dir) sort.Sort {
-	// column := GenerateColumns()[key]
+func sortBy(key string) func(ord order.Dir) column.Sort {
 	cols := simpleColumns()
 
 	col, found := cols[key]
@@ -126,13 +124,13 @@ func sortBy(key string) func(ord order.Dir) sort.Sort {
 		col = cols[SSIDKey]
 	}
 
-	return func(ord order.Dir) sort.Sort {
-		return sort.New(key, col.Sorter()).WithOrder(ord)
+	return func(ord order.Dir) column.Sort {
+		return column.NewSort(key, col.Sorter()).WithOrder(ord)
 	}
 }
 
 // Returns default Sort for the table.
-func defaultSort() sort.Sort {
+func defaultSort() column.Sort {
 	return sortBy(BarsKey)(order.DESC)
 }
 

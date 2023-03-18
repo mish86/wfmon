@@ -18,6 +18,7 @@ import (
 	"wfmon/pkg/serv"
 	"wfmon/pkg/widgets/dashboard"
 	"wfmon/pkg/widgets/sparkline"
+	"wfmon/pkg/widgets/spectrum"
 	"wfmon/pkg/widgets/wifitable"
 	"wfmon/pkg/wifi"
 
@@ -178,6 +179,7 @@ func (app *Application) init(ctx context.Context) {
 			sparkline.WithMaxVal(100),
 			sparkline.WithModifier(func(val float64) float64 { return val + 100 }),
 		)),
+		dashboard.WithSpectrum(spectrum.New()),
 		dashboard.WithDataSource(dataSource),
 		// dashboard.WithDataSource(ds.EmptyProvider{}),
 	)

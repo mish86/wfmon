@@ -2,7 +2,7 @@ package column
 
 import (
 	"fmt"
-	"wfmon/pkg/widgets/wifitable/sort"
+	"wfmon/pkg/widgets/sort"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -17,9 +17,9 @@ type Column interface {
 }
 
 // Converts columns definition with applied sorting direction in the title to ordered array of @table.Column.
-func Converter(columns []Column) func(sort sort.Sort) []table.Column {
+func Converter(columns []Column) func(sort Sort) []table.Column {
 	// columns can be copied in generator
-	return func(sort sort.Sort) []table.Column {
+	return func(sort Sort) []table.Column {
 		cols := make([]table.Column, len(columns))
 		for i := range columns {
 			col := columns[i]

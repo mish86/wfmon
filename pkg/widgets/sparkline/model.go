@@ -23,13 +23,6 @@ const (
 )
 
 var (
-	titleStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Right = "├"
-		b.Left = "┤"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
-	}()
-
 	axeYstyle = func() lipgloss.Style {
 		b := lipgloss.NormalBorder()
 		return lipgloss.NewStyle().Border(b, false, true, false, false)
@@ -185,6 +178,18 @@ func (m *Model) SetModifier(f func(float64) float64) {
 	m.modifier = f
 }
 
+func (m *Model) NetworkKey() netdata.Key {
+	return m.netKey
+}
+
+func (m *Model) FieldKey() string {
+	return m.fieldKey
+}
+
+func (m *Model) Title() string {
+	return m.fieldKey
+}
+
 // Views data redered by @refresh in viewport.
 // Axe Y takes extra 2 lines to viewport height.
 func (m *Model) View() string {
@@ -194,8 +199,6 @@ func (m *Model) View() string {
 	}
 
 	content := strings.Builder{}
-	content.WriteString(m.viewTitle())
-	content.WriteRune('\n')
 	if m.axesShown {
 		content.WriteString(lipgloss.JoinVertical(lipgloss.Right,
 			m.viewAxeYStart(),
@@ -206,13 +209,6 @@ func (m *Model) View() string {
 		content.WriteString(m.viewport.View())
 	}
 	return content.String()
-}
-
-// TODO: move tabs in dashboard
-func (m *Model) viewTitle() string {
-	title := titleStyle.Render(m.fieldKey)
-	gaps := strings.Repeat("─", cmp.Max(0, (m.viewport.Width-lipgloss.Width(title)))/2)
-	return lipgloss.JoinHorizontal(lipgloss.Center, gaps, title, gaps)
 }
 
 // Returns axe Y start point.

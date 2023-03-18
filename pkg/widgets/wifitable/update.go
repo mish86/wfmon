@@ -2,8 +2,11 @@ package wifitable
 
 import (
 	"strconv"
+	netdata "wfmon/pkg/data/net"
 	log "wfmon/pkg/logger"
-	"wfmon/pkg/widgets"
+	"wfmon/pkg/utils/cmp"
+	"wfmon/pkg/widgets/color"
+	"wfmon/pkg/widgets/events"
 	column "wfmon/pkg/widgets/wifitable/col"
 	order "wfmon/pkg/widgets/wifitable/ord"
 
@@ -15,7 +18,7 @@ func (m *Model) Init() tea.Cmd {
 	return refreshTick(defaultRefreshInterval)
 }
 
-func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -46,7 +49,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		c := m.colors[k]
 		return func() tea.Msg {
 			// key := m.networks[cursor].Key()
-			return widgets.NetworkKeyMsg{
+			return events.NetworkKeyMsg{
 				Key:   k,
 				Color: c,
 			}
@@ -55,9 +58,26 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 	// returns event with new table width
 	var onResizeCmd = func() tea.Cmd {
-		w := m.tableWidth()
+		w := m.TableWidth()
 		return func() tea.Msg {
-			return widgets.TableWidthMsg(w)
+			return events.TableWidthMsg(w)
+		}
+	}
+
+	var onPageUpdate = func() tea.Cmd {
+		from := cmp.Max(0, (m.CurrentPage()-1)*m.PageSize())
+		to := cmp.Min(len(m.networks), m.CurrentPage()*m.PageSize())
+		n := make([]netdata.Network, to-from)
+		c := make([]color.HexColor, len(n))
+		copy(n, m.networks[from:to])
+		var found bool
+		for i := range n {
+			if c[i], found = m.colors[n[i].Key()]; !found {
+				c[i] = color.Black()
+			}
+		}
+		return func() tea.Msg {
+			return events.NetworksOnScreen{Networks: n, Colors: c}
 		}
 	}
 
@@ -85,7 +105,6 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 		// send event about table width and cursort change
 		return tea.Batch(onResizeCmd(), onSelectedCmd())
-		// return onResizeCmd()
 	}
 
 	// Sorts table by column index.
@@ -121,7 +140,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.sort.Sort(m.networks)
 		m.refresh()
 
-		return onSelectedCmd()
+		return tea.Batch(onSelectedCmd(), onPageUpdate())
 	}
 
 	m.Model, cmd = m.Model.Update(msg)
@@ -132,27 +151,27 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.RowUp):
 			m.moveRowUp()
-			cmds = append(cmds, onSelectedCmd())
+			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.RowDown):
 			m.moveRowDown()
-			cmds = append(cmds, onSelectedCmd())
+			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.PageUp):
 			m.Model = m.PageUp()
-			cmds = append(cmds, onSelectedCmd())
+			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.PageDown):
 			m.Model = m.PageDown()
-			cmds = append(cmds, onSelectedCmd())
+			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.GotoTop):
 			m.gotoTop()
-			cmds = append(cmds, onSelectedCmd())
+			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.GotoBottom):
 			m.gotoBottom()
-			cmds = append(cmds, onSelectedCmd())
+			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.SignalView):
 			cmds = append(cmds, onCycleColumn(SignalMColumnIdx))
@@ -170,7 +189,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			// refresh table
 			m.refresh()
 			// send event about table width and cursort change
-			cmds = append(cmds, onResizeCmd(), onSelectedCmd())
+			cmds = append(cmds, onResizeCmd(), onSelectedCmd(), onPageUpdate())
 
 		case key.Matches(msg, m.keys.Sort):
 			cmds = append(cmds, onSortColumn(msg))
@@ -188,7 +207,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			cmds = append(cmds, onResizeCmd())
 		}
 
-		cmds = append(cmds, onSelectedCmd(), refreshTick(defaultRefreshInterval))
+		cmds = append(cmds, onSelectedCmd(), onPageUpdate(), refreshTick(defaultRefreshInterval))
 	}
 
 	// Bubble up the cmds

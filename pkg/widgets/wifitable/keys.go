@@ -17,8 +17,6 @@ type KeyMap struct {
 	StationView key.Binding
 	Sort        key.Binding
 	Reset       key.Binding
-	Help        key.Binding
-	Quit        key.Binding
 }
 
 func NewKeyMap() KeyMap {
@@ -73,14 +71,6 @@ func NewKeyMap() KeyMap {
 			key.WithKeys("0"),
 			key.WithHelp("0", "reset view"),
 		),
-		Help: key.NewBinding(
-			key.WithKeys("h", "?"),
-			key.WithHelp("h", "help"),
-		),
-		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
-		),
 	}
 }
 
@@ -88,14 +78,6 @@ func (k *KeyMap) MoveBindings() []key.Binding {
 	return []key.Binding{k.RowUp, k.RowDown, k.PageUp, k.PageDown, k.GotoTop, k.GotoBottom}
 }
 
-func (k *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Sort, k.Reset, k.StationView, k.SignalView, k.Help, k.Quit}
-}
-
-func (k *KeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		k.MoveBindings(),
-		{k.Sort, k.Reset, k.StationView, k.SignalView},
-		{k.Help, k.Quit},
-	}
+func (k *KeyMap) ViewBindings() []key.Binding {
+	return []key.Binding{k.Sort, k.Reset, k.StationView, k.SignalView}
 }

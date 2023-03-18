@@ -2,8 +2,10 @@ package color
 
 import (
 	"fmt"
+
 	"math/rand"
 	"time"
+	"wfmon/pkg/utils/cmp"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -25,15 +27,32 @@ func (hex HexColor) Lipgloss() lipgloss.Color {
 type HexIter func() (HexColor, HexIter)
 
 func Random() HexIter {
+	const (
+		byteSize = 255
+		darker   = 220
+	)
+
+	var dark = func(v byte) byte {
+		return cmp.Nvl(v <= darker, v, byteSize-v)
+	}
+	var light = func(v byte) byte {
+		return cmp.Nvl(v > darker, v, byteSize-v)
+	}
+
+	adaptive := dark
+	if lipgloss.HasDarkBackground() {
+		adaptive = light
+	}
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	var gen = func() byte {
+		return adaptive(byte(r.Intn(byteSize)))
+	}
 
 	var next HexIter
 	next = func() (HexColor, HexIter) {
-		return HexColor{
-			byte(r.Intn(255)),
-			byte(r.Intn(255)),
-			byte(r.Intn(255)),
-		}, next
+		return HexColor{gen(), gen(), gen()}, next
 	}
 
 	return next

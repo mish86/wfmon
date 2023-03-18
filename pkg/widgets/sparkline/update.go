@@ -1,8 +1,7 @@
 package sparkline
 
 import (
-	netdata "wfmon/pkg/data/net"
-	"wfmon/pkg/widgets"
+	"wfmon/pkg/widgets/events"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -11,25 +10,25 @@ func (m *Model) Init() tea.Cmd {
 	return refreshTick(defaultRefreshInterval)
 }
 
-func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		// cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 
 	switch msg := msg.(type) {
-	case widgets.NetworkKeyMsg:
-		m.SetNetworkKey(netdata.Key(msg.Key))
+	case events.NetworkKeyMsg:
+		m.SetNetworkKey(msg.Key)
 		m.SetColor(msg.Color.Lipgloss())
 		m.sparkline.Data = m.getData()
 		m.refresh()
 
-	case widgets.FieldMsg:
+	case events.FieldMsg:
 		m.SetFieldKey(string(msg))
 		m.sparkline.Data = m.getData()
 		m.refresh()
 
-	case widgets.TableWidthMsg:
+	case events.TableWidthMsg:
 		m.SetWidth(int(msg))
 		m.refresh()
 

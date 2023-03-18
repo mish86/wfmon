@@ -3,9 +3,9 @@ package wifitable
 import (
 	"strconv"
 	netdata "wfmon/pkg/data/net"
+	"wfmon/pkg/widgets/sort"
 	column "wfmon/pkg/widgets/wifitable/col"
 	"wfmon/pkg/widgets/wifitable/row"
-	"wfmon/pkg/widgets/wifitable/sort"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -55,57 +55,57 @@ func newColumn(key string, sorter sort.FncSorter) column.Simple {
 }
 
 func HashColumn() column.Simple {
-	return newColumn(HashKey, BySSIDSorter())
+	return newColumn(HashKey, sort.BySSIDSorter())
 }
 
 func SSIDColumn() column.Simple {
-	return newColumn(SSIDKey, BySSIDSorter()).
+	return newColumn(SSIDKey, sort.BySSIDSorter()).
 		WithStyle(lipgloss.NewStyle().
 			Align(lipgloss.Left))
 }
 
 func BSSIDColumn() column.Simple {
-	return newColumn(BSSIDKey, ByBSSIDSorter())
+	return newColumn(BSSIDKey, sort.ByBSSIDSorter())
 }
 
 func ManufColumn() column.Simple {
-	return newColumn(ManufKey, ByManufSorter())
+	return newColumn(ManufKey, sort.ByManufSorter())
 }
 
 func ManufactorColumn() column.Simple {
-	return newColumn(ManufactorKey, ByManufLongSorter())
+	return newColumn(ManufactorKey, sort.ByManufLongSorter())
 }
 
 func ChannelColumn() column.Simple {
-	return newColumn(ChanKey, ByChannelSorter())
+	return newColumn(ChanKey, sort.ByChannelSorter())
 }
 
 func WidthColumn() column.Simple {
-	return newColumn(WidthKey, ByChannelWidthSorter())
+	return newColumn(WidthKey, sort.ByChannelWidthSorter())
 }
 
 func BandColumn() column.Simple {
-	return newColumn(BandKey, ByBandwidthSorter())
+	return newColumn(BandKey, sort.ByBandwidthSorter())
 }
 
 func RSSIColumn() column.Simple {
-	return newColumn(RSSIKey, ByRSSISorter())
+	return newColumn(RSSIKey, sort.ByRSSISorter())
 }
 
 func QualityColumn() column.Simple {
-	return newColumn(QualityKey, ByQualitySorter())
+	return newColumn(QualityKey, sort.ByQualitySorter())
 }
 
 func BarsColumn() column.Simple {
-	return newColumn(BarsKey, ByQualitySorter())
+	return newColumn(BarsKey, sort.ByQualitySorter())
 }
 
 func NoiseColumn() column.Simple {
-	return newColumn(NoiseKey, ByNoiseSorter())
+	return newColumn(NoiseKey, sort.ByNoiseSorter())
 }
 
 func SNRColumn() column.Simple {
-	return newColumn(SNRKey, BySNRSorter())
+	return newColumn(SNRKey, sort.BySNRSorter())
 }
 
 func SignalColumn() column.Multiple {
@@ -163,7 +163,7 @@ func simpleColumns() map[string]column.Simple {
 func cellViewers() map[string]row.FncCellViewer {
 	return map[string]row.FncCellViewer{
 		HashKey: func(row *row.Data) any {
-			return table.NewStyledCell(" ", lipgloss.NewStyle().Background(row.GetHashColor()))
+			return table.NewStyledCell("█", lipgloss.NewStyle().Foreground(row.GetHashColor()))
 		},
 		SSIDKey: func(row *row.Data) any {
 			// The goal is to keep space between columns.
@@ -195,7 +195,7 @@ func cellViewers() map[string]row.FncCellViewer {
 		},
 		BandKey: func(row *row.Data) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(row.GetRowStyle())
-			return table.NewStyledCell(row.Band.String(), style)
+			return table.NewStyledCell(row.Band.Range(), style)
 		},
 		RSSIKey: func(row *row.Data) any {
 			return table.NewStyledCell(strconv.Itoa(int(row.RSSI)), row.GetRowStyle())

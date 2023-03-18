@@ -1,7 +1,7 @@
 package column
 
 import (
-	"wfmon/pkg/widgets/wifitable/sort"
+	"wfmon/pkg/widgets/sort"
 
 	"github.com/charmbracelet/lipgloss"
 )
