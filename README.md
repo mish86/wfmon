@@ -5,22 +5,21 @@
 - [x] Mark a row with color or emoji, if row relates to a network associated before wfmon start.
 - [x] Generate code from manuf dictionary. Add Manufacture data.
 - [x] Switch column view for BSSID/Manufacture with sorting support.
-- [ ] Add flags support. -i --interface. if not provided then use default wifi interface.
-- [ ] Search network by SSID, hotkey /
-- [ ] Add Seen data/column.
-- [ ] Add b/g/n/ac data.
-- [ ] Add Rate data.
 - [x] Add Vendor data.
+- [x] Add RSSI/Quality spectrum chart.
+- [x] Add RSSI/Quality sparkline chart.
+- [ ] Add flags support. -i --interface. if not provided then use default wifi interface.
+- [ ] Add an option to start program with analyze of given pcap file and end execution. -f --file.
 - [ ] ?Determine default wifi interface using CoreWLAN api.
 - [ ] ?Deassociate interface from network before set on monitoring using CoreWLAN api.
 - [ ] ?Change radio channels during scan using CoreWLAN api.
 - [ ] Support average sampling for RSSI and Noise values.
-- [ ] Add an option to start program with analyze of given pcap file and end execution. -f --file.
-- [ ] ?Sniffering with timeout, print simple output and end program execution. -p --print columns; -t --timeout.
-- [ ] ?Add packets received stats as a line above the table.
-- [ ] ?Verbose flag to print logs below the table. -v
-- [ ] ?Add Info (with more data) widget of selected network.
-- [ ] Add RSSI/Quality sectrum chart.
-- [ ] Add RSSI/Quality line chart.
+- [ ] Search network by SSID, hotkey /
+- [ ] ?Verbose flag to print logs below the table and charts. -v
 - [ ] ?Windows support
 - [ ] ?Linux support
+- [ ] ?Add packets received stats as a line above the table.
+- [ ] ?Add Info (with more data) widget of highlighted network.
+- [ ] ?Add Seen data/column.
+- [ ] ?Add b/g/n/ac data.
+- [ ] ?Add Rate data.
