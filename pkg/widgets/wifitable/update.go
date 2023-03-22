@@ -24,19 +24,38 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	// returns event with selected network key
-	var onSelectedCmd = func() tea.Cmd {
-		net := m.GetSelectedNetwork()
+	var getNetworkKeyMsg = func() events.NetworkKeyMsg {
+		net, color := m.GetSelectedNetwork()
+		return events.NetworkKeyMsg{
+			Key:   net.Key(),
+			Color: color,
+		}
+	}
 
-		// broadcast event to other widgets about changed selection
-		k := net.Key()
-		c := m.colors[k]
+	// returns event with highlighted network key
+	var onHighlightedCmd = func() tea.Cmd {
+		msg := getNetworkKeyMsg()
+		// broadcast event to other widgets about change in highlighted row
 		return func() tea.Msg {
-			// key := m.networks[cursor].Key()
-			return events.NetworkKeyMsg{
-				Key:   k,
-				Color: c,
-			}
+			return msg
+		}
+	}
+
+	// returns event with selected network triggered by keyboard interaction
+	var onSelectedCmd = func() tea.Cmd {
+		msg := getNetworkKeyMsg()
+		// broadcast event to other widgets about cursor move
+		return func() tea.Msg {
+			return events.SelectedNetworkKeyMsg(msg)
+		}
+	}
+
+	// returns event with toggled network key
+	var onToggleCmd = func() tea.Cmd {
+		msg := getNetworkKeyMsg()
+		// broadcast event to other widgets about toggle a row
+		return func() tea.Msg {
+			return events.ToggledNetworkKeyMsg(msg)
 		}
 	}
 
@@ -65,9 +84,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	var onSignalField = func() tea.Cmd {
+		col := m.columns[SignalMColumnIdx]
+		key := col.Key()
+
+		return func() tea.Msg {
+			return SignalFieldMsges()[key]
+		}
+	}
+
 	// Rotates column in @Multiple column view.
 	// Refresh table and send resize and select events.
-	var onCycleColumn = func(colIdx int) tea.Cmd {
+	var cycleColumn = func(colIdx int) tea.Cmd {
 		col := m.columns[colIdx]
 		prevKey := col.Key()
 
@@ -87,13 +115,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sort.Sort(m.networks)
 		m.refresh()
 
-		// send event about table width and cursort change
-		return tea.Batch(onResizeCmd(), onSelectedCmd())
+		// send events about table width and cursort change
+		// TODO: send onSelectedCmd?
+		return tea.Batch(onResizeCmd(), onHighlightedCmd())
 	}
 
 	// Sorts table by column index.
 	// Numbering starts from SSID column.
-	var onSortColumn = func(msg tea.KeyMsg) tea.Cmd {
+	var sortColumn = func(msg tea.KeyMsg) tea.Cmd {
 		var num, idx int
 		var err error
 		if num, err = strconv.Atoi(msg.String()); err != nil {
@@ -124,7 +153,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sort.Sort(m.networks)
 		m.refresh()
 
-		return tea.Batch(onSelectedCmd(), onPageUpdate())
+		// send events about page and highlighted row updates
+		// TODO: send onSelectedCmd?
+		return tea.Batch(onPageUpdate(), onHighlightedCmd())
 	}
 
 	m.Model, cmd = m.Model.Update(msg)
@@ -135,33 +166,34 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.RowUp):
 			m.moveRowUp()
-			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
+			cmds = append(cmds, onPageUpdate(), onHighlightedCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.RowDown):
 			m.moveRowDown()
-			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
+			cmds = append(cmds, onPageUpdate(), onHighlightedCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.PageUp):
 			m.Model = m.PageUp()
-			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
+			cmds = append(cmds, onPageUpdate(), onHighlightedCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.PageDown):
 			m.Model = m.PageDown()
-			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
+			cmds = append(cmds, onPageUpdate(), onHighlightedCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.GotoTop):
 			m.gotoTop()
-			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
+			cmds = append(cmds, onPageUpdate(), onHighlightedCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.GotoBottom):
 			m.gotoBottom()
-			cmds = append(cmds, onSelectedCmd(), onPageUpdate())
+			cmds = append(cmds, onPageUpdate(), onHighlightedCmd(), onSelectedCmd())
 
 		case key.Matches(msg, m.keys.SignalView):
-			cmds = append(cmds, onCycleColumn(SignalMColumnIdx))
+			cmds = append(cmds, cycleColumn(SignalMColumnIdx))
+			cmds = append(cmds, onSignalField())
 
 		case key.Matches(msg, m.keys.StationView):
-			cmds = append(cmds, onCycleColumn(StationMColumnIdx))
+			cmds = append(cmds, cycleColumn(StationMColumnIdx))
 
 		case key.Matches(msg, m.keys.Reset):
 			// reset columns view
@@ -172,11 +204,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sort.Sort(m.networks)
 			// refresh table
 			m.refresh()
-			// send event about table width and cursort change
-			cmds = append(cmds, onResizeCmd(), onSelectedCmd(), onPageUpdate())
+			// send events about table width, page and highlighted row updates
+			// TODO: send onSelectedCmd?
+			cmds = append(cmds, onResizeCmd(), onPageUpdate(), onHighlightedCmd())
 
 		case key.Matches(msg, m.keys.Sort):
-			cmds = append(cmds, onSortColumn(msg))
+			// TODO: send onSelectedCmd?
+			cmds = append(cmds, sortColumn(msg))
+
+		case key.Matches(msg, m.keys.RowSelectToggle):
+			cmds = append(cmds, onToggleCmd())
+
 		}
 
 	case refreshMsg:
@@ -191,7 +229,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, onResizeCmd())
 		}
 
-		cmds = append(cmds, onSelectedCmd(), onPageUpdate(), refreshTick(defaultRefreshInterval))
+		cmds = append(cmds, onHighlightedCmd(), onPageUpdate(), refreshTick(defaultRefreshInterval))
 	}
 
 	// Bubble up the cmds

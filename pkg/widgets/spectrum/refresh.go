@@ -4,6 +4,7 @@ import (
 	"image"
 	"math"
 	"strings"
+	"wfmon/pkg/utils/cmp"
 	"wfmon/pkg/widgets/buffer"
 	"wfmon/pkg/wifi"
 
@@ -76,6 +77,10 @@ func (m *Model) viewAxeY() string {
 
 // Immediately renders data to viewport.
 func (m *Model) refresh() {
+	if !m.focused {
+		return
+	}
+
 	m.refreshByBand()
 }
 
@@ -92,7 +97,7 @@ func (m *Model) refreshByBand() {
 		return
 	}
 
-	// returns zero point (X,Y) offset in symbols, and X channel step scale in symbols
+	// returns zero point (X,Y) offset in symbols, and X channel step width in symbols
 	var bandParams = func(b wifi.Band) (image.Point, int) {
 		//nolint:exhaustive // ignore
 		switch b {
@@ -118,6 +123,7 @@ func (m *Model) refreshByBand() {
 
 	var selected *Wave
 	view := image.Point{X: m.viewport.Width, Y: m.viewport.Height}
+	yAbsMaxVal := cmp.Max(math.Abs(m.minVal), math.Abs(m.maxVal))
 
 	if len(filtered) == 1 {
 		selected = &filtered[0]
@@ -134,7 +140,7 @@ func (m *Model) refreshByBand() {
 				selected = &w
 				continue
 			}
-			r1, r2 := w.rects(xy0, view, step, m.minVal)
+			r1, r2 := w.rects(xy0, view, step, math.Copysign(yAbsMaxVal, w.Value))
 			w.renderBordered(buf, r1, r2)
 		}
 	}
@@ -142,7 +148,7 @@ func (m *Model) refreshByBand() {
 	if selected != nil {
 		xy0, step := bandParams(selected.Band)
 
-		r1, r2 := selected.rects(xy0, view, step, m.minVal)
+		r1, r2 := selected.rects(xy0, view, step, math.Copysign(yAbsMaxVal, selected.Value))
 		selected.renderSolid(buf, r1, r2)
 	}
 
@@ -151,22 +157,34 @@ func (m *Model) refreshByBand() {
 
 // Returns rects for wave of primary and secondary channels.
 // Secondary channel wave rect is optional.
-func (wave *Wave) rects(xy0, view image.Point, xScale int, yMinVal float64) (image.Rectangle, image.Rectangle) {
+func (wave *Wave) rects(xy0, view image.Point, xScale int, yMaxVal float64) (image.Rectangle, image.Rectangle) {
+	// full width value
 	w := int(wave.Width) * wave20MhzWidth * xScale
+	// width value for primary channel
 	w1 := wave20MhzWidth * xScale
-	h := view.Y - int(math.Floor(float64(view.Y)*wave.Value/yMinVal))
+	// height value
+	h := int(math.Floor(wave.Value * float64(view.Y) / yMaxVal))
+	// values in a range less than zero
+	if math.Signbit(yMaxVal) {
+		// reverse
+		h = cmp.Max(0, view.Y-h)
+	}
+	// left offset
 	leftMargin := xy0.X + (int(wave.LowerChannel())-halfOfWave20MhzWidth)*xScale
+	// bottom offset
 	bottomMargin := xy0.Y
 
+	// determine rects for primary channel and remaining frequency
 	if wave.Sign < 0 {
-		return image.Rect(leftMargin+w1, bottomMargin, leftMargin+w, bottomMargin+h-1),
-			image.Rect(leftMargin, bottomMargin, leftMargin+w1-1, bottomMargin+h-1)
+		return image.Rect(leftMargin+w1, bottomMargin, leftMargin+w, bottomMargin+h),
+			image.Rect(leftMargin, bottomMargin, leftMargin+w1-1, bottomMargin+h)
 	} else if wave.Sign > 0 {
-		return image.Rect(leftMargin, bottomMargin, leftMargin+w1, bottomMargin+h-1),
-			image.Rect(leftMargin+w1+1, bottomMargin, leftMargin+w, bottomMargin+h-1)
+		return image.Rect(leftMargin, bottomMargin, leftMargin+w1, bottomMargin+h),
+			image.Rect(leftMargin+w1+1, bottomMargin, leftMargin+w, bottomMargin+h)
 	}
 
-	return image.Rect(leftMargin, bottomMargin, leftMargin+w, bottomMargin+h-1), image.Rectangle{}
+	// only one rect for primary channel
+	return image.Rect(leftMargin, bottomMargin, leftMargin+w, bottomMargin+h), image.Rectangle{}
 }
 
 // Renders a wave in a buffer by rectangle using fill and border runes.

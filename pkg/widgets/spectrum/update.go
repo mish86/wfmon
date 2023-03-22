@@ -20,20 +20,35 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	// var changeViewOnSelect = func() {
-	// 	for i := range m.data {
-	// 		if m.selected.Compare(m.data[i].Key) == 0 {
-	// 			m.SetBandView(m.data[i].Band)
-	// 		}
-	// 	}
-	// }
+	var changeViewOnSelect = func() {
+		for i := range m.data {
+			if m.selected.Compare(m.data[i].Key) == 0 {
+				m.SetBandView(m.data[i].Band)
+			}
+		}
+	}
 
 	switch msg := msg.(type) {
+	case events.ToggledNetworkKeyMsg:
+		// nothing
+
+	case events.SelectedNetworkKeyMsg:
+		m.selected = msg.Key
+		// auto-change band view for selected network
+		changeViewOnSelect()
+		// render data to viewport
+		m.refresh()
+
 	case events.NetworkKeyMsg:
 		m.selected = msg.Key
 		// auto-change band view for selected network
 		// changeViewOnSelect()
 		// render data to viewport
+		m.refresh()
+
+	case events.SignalFieldMsg:
+		WithSignalField(msg)(m)
+
 		m.refresh()
 
 	case events.TableWidthMsg:
@@ -52,10 +67,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// convert to waves to display
-		m.data = MultiWaver(events.NetworksOnScreen{
-			Networks: nets,
-			Colors:   colors,
-		}).Waves()
+		m.data = MultiWaver{
+			NetworksOnScreen: events.NetworksOnScreen{
+				Networks: nets,
+				Colors:   colors,
+			},
+			fieldKey: m.fieldKey,
+			ts:       m.dataSource,
+		}.Waves()
 
 		// auto-change band view for selected network
 		// changeViewOnSelect()

@@ -158,21 +158,22 @@ func visibleColumnKeys(cols []column.Column) []string {
 	return keys
 }
 
-func (m *Model) GetSelectedNetwork() netdata.Network {
+func (m *Model) GetSelectedNetwork() (netdata.Network, color.HexColor) {
 	cursor := m.GetHighlightedRowIndex()
 
 	// FIXME: race at access to networks
 
 	// no data
 	if len(m.networks) == 0 {
-		return netdata.Network{}
+		return netdata.Network{}, color.HexColor{}
 	}
 
 	// out of bounds
 	if cursor < 0 || cursor >= len(m.networks) {
 		log.Errorf("cursor %d out of bounds networks: %v", cursor, m.networks)
-		return netdata.Network{}
+		return netdata.Network{}, color.HexColor{}
 	}
 
-	return m.networks[cursor]
+	net := m.networks[cursor]
+	return net, m.colors[net.Key()]
 }

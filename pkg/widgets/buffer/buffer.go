@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"strings"
+	log "wfmon/pkg/logger"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -43,6 +44,11 @@ func (b *Buffer) idx(x, y int) int {
 // s - foreground and background colors.
 func (b *Buffer) SetCell(x, y int, r rune, s ...lipgloss.Color) {
 	idx := b.idx(x, y)
+
+	if idx >= len(b.cells) {
+		log.Fatalf("Index %d (%d, %d) out of bounds buffer dimensions (%d)", idx, x, y, len(b.cells))
+		return
+	}
 
 	b.cells[idx] = r
 

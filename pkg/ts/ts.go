@@ -70,7 +70,20 @@ func (ts TimeSeries) end(cnt int) []Sample {
 
 type Vector []float64
 
-func (ts TimeSeries) Range(cnt int, modifier func(val float64) float64) Vector {
+func (ts TimeSeries) Last() (float64, bool) {
+	vals := ts.Range(1)
+	if len(vals) > 0 {
+		return vals[0], true
+	}
+
+	return 0, false
+}
+
+func (ts TimeSeries) Range(cnt int) Vector {
+	return ts.RangeAndMap(cnt, func(val float64) float64 { return val })
+}
+
+func (ts TimeSeries) RangeAndMap(cnt int, modifier func(val float64) float64) Vector {
 	samples := ts.end(cnt)
 
 	vec := make(Vector, len(samples))

@@ -2,6 +2,7 @@ package spectrum
 
 import (
 	netdata "wfmon/pkg/data/net"
+	"wfmon/pkg/ds"
 	"wfmon/pkg/utils/cmp"
 	"wfmon/pkg/widgets/events"
 	"wfmon/pkg/wifi"
@@ -39,10 +40,15 @@ func (wave *Wave) UpperChannel() uint8 {
 	return cmp.Max(wave.PrimaryChannel, uint8(int8(wave.PrimaryChannel)+wave.Sign*wave20MhzWidth*int8(wave.Width-1)))
 }
 
-type Waver netdata.Network
+type Waver struct {
+	netdata.Network
+
+	fieldKey string
+	ts       ds.TimeSeriesProvider
+}
 
 func (c Waver) Wave() Wave {
-	net := netdata.Network(c)
+	net := netdata.Network(c.Network)
 
 	var sign int8
 	//nolint:exhaustive // ignore
@@ -55,17 +61,24 @@ func (c Waver) Wave() Wave {
 		sign = 0
 	}
 
+	val, _ := c.ts.TimeSeries(net.Key())(c.fieldKey).Last()
+
 	return Wave{
 		Key:            net.Key(),
 		Band:           net.Band,
-		Value:          float64(net.RSSI),
+		Value:          val,
 		PrimaryChannel: net.Channel,
 		Sign:           sign,
 		Width:          uint8(net.ChannelWidth / wave20Mhz),
 	}
 }
 
-type MultiWaver events.NetworksOnScreen
+type MultiWaver struct {
+	events.NetworksOnScreen
+
+	fieldKey string
+	ts       ds.TimeSeriesProvider
+}
 
 func (c MultiWaver) Waves() []Wave {
 	nets := c.Networks
@@ -74,7 +87,11 @@ func (c MultiWaver) Waves() []Wave {
 	waves := make([]Wave, len(nets))
 
 	for i := range nets {
-		w := Waver(nets[i]).Wave()
+		w := Waver{
+			Network:  nets[i],
+			fieldKey: c.fieldKey,
+			ts:       c.ts,
+		}.Wave()
 		w.Color = colors[i].Lipgloss()
 		waves[i] = w
 	}

@@ -17,14 +17,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case events.ToggledNetworkKeyMsg:
+		// nothing
+
+	case events.SelectedNetworkKeyMsg:
+		// not required, handled by events.NetworkKeyMsg
+
 	case events.NetworkKeyMsg:
 		m.SetNetworkKey(msg.Key)
 		m.SetColor(msg.Color.Lipgloss())
 		m.data = m.getData()
 		m.refresh()
 
-	case events.FieldMsg:
-		m.SetFieldKey(string(msg))
+	case events.SignalFieldMsg:
+		WithSignalField(msg)(m)
+
 		m.data = m.getData()
 		m.refresh()
 

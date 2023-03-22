@@ -46,6 +46,7 @@ func WithDataSource(dataSource ds.Provider) Option {
 
 		m.table.SetDataSource(dataSource)
 		m.sparkline.SetDataSource(dataSource)
+		m.spectrum.SetDataSource(dataSource)
 	}
 }
 
@@ -112,12 +113,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var onChartRefresh = func() tea.Cmd {
 		w := m.width
 
-		return func() tea.Msg {
-			return events.TableWidthMsg(w)
-		}
+		net, color := m.table.GetSelectedNetwork()
+
+		return tea.Batch(
+			func() tea.Msg {
+				return events.TableWidthMsg(w)
+			},
+			func() tea.Msg {
+				return events.SelectedNetworkKeyMsg{
+					Key:   net.Key(),
+					Color: color,
+				}
+			},
+		)
 	}
 
-	if m.table.GetFocused() {
+	{
 		model, cmd := m.table.Update(msg)
 		if m.table, ok = model.(*wifitable.Model); !ok {
 			log.Fatalf("wifi table update method returned unexpected model %v", model)
@@ -125,7 +136,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.sparkline.GetFocused() {
+	{
 		model, cmd := m.sparkline.Update(msg)
 		if m.sparkline, ok = model.(*sparkline.Model); !ok {
 			log.Fatalf("sparkline update method returned unexpected model %v", model)
@@ -133,7 +144,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.spectrum.GetFocused() {
+	{
 		model, cmd := m.spectrum.Update(msg)
 		if m.spectrum, ok = model.(*spectrum.Model); !ok {
 			log.Fatalf("spectrum update method returned unexpected model %v", model)
@@ -146,11 +157,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = int(msg)
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.table.KeyMap().RowSelectToggle):
-			if m.chart == m.spectrum {
-				m.spectrum.SetBandView(m.table.GetSelectedNetwork().Band)
-				cmds = append(cmds, onChartRefresh())
-			}
 		case key.Matches(msg, m.keys.Sparkline):
 			chartFocused(false)
 			m.chart = m.sparkline

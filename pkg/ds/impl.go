@@ -87,29 +87,25 @@ func (ds *DataSource) Add(newData *netdata.Network) {
 		// Copy data
 		ds.table[key] = newData
 
-		// new rssi ts
+		// new timeseries
 		addMetric(key, netdata.RSSIKey, float64(newData.RSSI), time.Now())
-		// ds.ts[key] = map[string]ts.TimeSeries{
-		// 	netdata.RSSIKey: ts.NewTimeSeries(100).Add(float64(newData.RSSI), time.Now()),
-		// }
+		addMetric(key, netdata.QualityKey, float64(newData.Quality), time.Now())
 
 		return
 	}
 
 	// merge network with existing
-	entry.Manuf = newData.Manuf
-	entry.Channel = newData.Channel
-	entry.ChannelWidth = newData.ChannelWidth
-	entry.Band = newData.Band
-	entry.RSSI = newData.RSSI
-	entry.Noise = newData.Noise
-	entry.SNR = newData.SNR
+	{
+		entry = &*newData
+		// TODO: use avarage for quality and noise
+		ds.table[key] = entry
 
-	// append rssi ts
-	addMetric(key, netdata.RSSIKey, float64(newData.RSSI), time.Now())
-	// ds.tsLock.Lock()
-	// defer ds.tsLock.Unlock()
-	// ds.ts[key][netdata.RSSIKey] = ds.ts[key][netdata.RSSIKey].Add(float64(newData.RSSI), time.Now())
+		// append timeseries
+		addMetric(key, netdata.RSSIKey, float64(newData.RSSI), time.Now())
+		addMetric(key, netdata.QualityKey, float64(newData.Quality), time.Now())
+
+		return
+	}
 }
 
 // Returns network data slice.

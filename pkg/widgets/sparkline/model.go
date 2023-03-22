@@ -6,7 +6,7 @@ import (
 	"time"
 	netdata "wfmon/pkg/data/net"
 	"wfmon/pkg/ds"
-	"wfmon/pkg/utils/cmp"
+	"wfmon/pkg/widgets/events"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
@@ -34,7 +34,6 @@ type Model struct {
 	data      []float64
 	minVal    float64
 	maxVal    float64
-	modifier  func(float64) float64
 	color     lipgloss.Color
 	axesShown bool
 
@@ -81,9 +80,11 @@ func WithMaxVal(val float64) Option {
 	}
 }
 
-func WithModifier(f func(float64) float64) Option {
+func WithSignalField(msg events.SignalFieldMsg) Option {
 	return func(m *Model) {
-		m.SetModifier(f)
+		m.SetFieldKey(msg.Key)
+		m.SetMinVal(msg.MinVal)
+		m.SetMaxVal(msg.MaxVal)
 	}
 }
 
@@ -106,7 +107,6 @@ func New(opts ...Option) *Model {
 		data:       []float64{},
 		minVal:     0,
 		maxVal:     0,
-		modifier:   func(v float64) float64 { return v },
 		color:      defaultColor,
 		axesShown:  false,
 		dataSource: ds.EmptyProvider{},
@@ -127,6 +127,10 @@ func (m *Model) SetNetworkKey(key netdata.Key) {
 	m.netKey = key
 }
 
+func (m *Model) NetworkKey() netdata.Key {
+	return m.netKey
+}
+
 func (m *Model) SetColor(c lipgloss.Color) {
 	m.color = c
 }
@@ -138,6 +142,10 @@ func (m *Model) ShowYAxe(show bool) {
 
 func (m *Model) SetFieldKey(key string) {
 	m.fieldKey = key
+}
+
+func (m *Model) FieldKey() string {
+	return m.fieldKey
 }
 
 func (m *Model) SetDimension(w, h int) {
@@ -165,24 +173,13 @@ func (m *Model) SetMaxVal(val float64) {
 	m.maxVal = val
 }
 
-func (m *Model) SetModifier(f func(float64) float64) {
-	m.modifier = f
-}
-
 func (m *Model) Focused(focus bool) {
 	m.focused = focus
+	// m.viewport.SetContent("")
 }
 
 func (m *Model) GetFocused() bool {
 	return m.focused
-}
-
-func (m *Model) NetworkKey() netdata.Key {
-	return m.netKey
-}
-
-func (m *Model) FieldKey() string {
-	return m.fieldKey
 }
 
 func (m *Model) Title() string {
@@ -200,24 +197,12 @@ func (m *Model) View() string {
 	content := strings.Builder{}
 	if m.axesShown {
 		content.WriteString(lipgloss.JoinVertical(lipgloss.Right,
-			m.viewAxeYStart(),
+			fmt.Sprintf("%.f┑", m.maxVal),
 			axeYstyle().Render(m.viewport.View()),
-			m.viewAxeYEnd(),
+			fmt.Sprintf("%.f┙", m.minVal),
 		))
 	} else {
 		content.WriteString(m.viewport.View())
 	}
 	return content.String()
-}
-
-// Returns axe Y start point.
-// Y axe vector from bottom to top.
-func (m *Model) viewAxeYStart() string {
-	return fmt.Sprintf("%.f┑", cmp.Max(0.0, m.maxVal-m.modifier(m.maxVal)))
-}
-
-// Returns axe Y start point.
-// Y axe vector from bottom to top.
-func (m *Model) viewAxeYEnd() string {
-	return fmt.Sprintf("%.f┙", cmp.Min(0.0, m.minVal-m.modifier(m.minVal)))
 }

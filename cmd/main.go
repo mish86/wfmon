@@ -175,16 +175,12 @@ func (app *Application) init(ctx context.Context) {
 		)),
 		dashboard.WithSparkline(sparkline.New(
 			sparkline.WithFocused(true),
-			sparkline.WithField(netdata.RSSIKey),
 			sparkline.WithYAxe(true),
-			sparkline.WithMinVal(0),
-			sparkline.WithMaxVal(100),
-			sparkline.WithModifier(func(val float64) float64 { return val + 100 }),
+			sparkline.WithSignalField(wifitable.BarsFieldMsg()),
 		)),
 		dashboard.WithSpectrum(spectrum.New(
 			spectrum.WithFocused(false),
-			spectrum.WithMinVal(-100),
-			spectrum.WithMaxVal(0),
+			spectrum.WithSignalField(wifitable.BarsFieldMsg()),
 		)),
 		dashboard.WithDataSource(dataSource),
 		// dashboard.WithDataSource(ds.EmptyProvider{}),

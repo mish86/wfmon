@@ -5,18 +5,26 @@ import (
 	"wfmon/pkg/widgets/color"
 )
 
-// Event with currently selected network in wifi table.
-// Sent by wifi table on cursor move.
-// Handled by signal sparkline chart.
+// Event with currently highlighted network in wifi table.
+// Sent by wifi table on refresh, sort, (filter).
 type NetworkKeyMsg struct {
 	Key   netdata.Key
 	Color color.HexColor
 }
 
-// Event signal strength measurement (RSSI, Quality, Bars) selected in wifi table.
-// TODO: Sent by wifi table.
-// TODO: Handled by signal sparkline chart and spectrum chart.
-type FieldMsg string
+// Event with currently highlited network in wifi table.
+// Sent by wifi table on cursor move.
+type SelectedNetworkKeyMsg NetworkKeyMsg
+
+// Event with toggled network in wifi table.
+// Sent by wifi table on toggle a row.
+type ToggledNetworkKeyMsg NetworkKeyMsg
+
+// Event with type of signal measurement (RSSI, Quality, Bars) selected in wifi table.
+type SignalFieldMsg struct {
+	Key            string
+	MinVal, MaxVal float64
+}
 
 // Event with current wifi table width.
 // Sent by wifi table.
@@ -24,8 +32,7 @@ type FieldMsg string
 type TableWidthMsg int
 
 // Event with networks currently displayed in wifi table.
-// Sent by wifi table on pagination change.
-// Handled by spectrum chart.
+// Sent by wifi table on pagination.
 type NetworksOnScreen struct {
 	Networks []netdata.Network
 	Colors   []color.HexColor
