@@ -110,22 +110,30 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	var onChartRefresh = func() tea.Cmd {
-		w := m.width
+	var focusChart = func(chart tea.Model) func() tea.Cmd {
+		chartFocused(false)
+		if m.chart == chart && m.chart == m.spectrum {
+			m.spectrum.NextBandView()
+		}
+		m.chart = chart
+		chartFocused(true)
 
+		w := m.width
 		net, color := m.table.GetSelectedNetwork()
 
-		return tea.Batch(
-			func() tea.Msg {
-				return events.TableWidthMsg(w)
-			},
-			func() tea.Msg {
-				return events.SelectedNetworkKeyMsg{
-					Key:   net.Key(),
-					Color: color,
-				}
-			},
-		)
+		return func() tea.Cmd {
+			return tea.Batch(
+				func() tea.Msg {
+					return events.TableWidthMsg(w)
+				},
+				func() tea.Msg {
+					return events.SelectedNetworkKeyMsg{
+						Key:   net.Key(),
+						Color: color,
+					}
+				},
+			)
+		}
 	}
 
 	{
@@ -158,19 +166,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Sparkline):
-			chartFocused(false)
-			m.chart = m.sparkline
-			chartFocused(true)
-			cmds = append(cmds, onChartRefresh())
+			focusChart(m.sparkline)
+			// chartFocused(false)
+			// m.chart = m.sparkline
+			// chartFocused(true)
+			// cmds = append(cmds, onChartRefresh())
 
 		case key.Matches(msg, m.keys.Spectrum):
-			chartFocused(false)
-			if m.chart == m.spectrum {
-				m.spectrum.NextBandView()
-			}
-			m.chart = m.spectrum
-			chartFocused(true)
-			cmds = append(cmds, onChartRefresh())
+			focusChart(m.spectrum)
+			// chartFocused(false)
+			// if m.chart == m.spectrum {
+			// 	m.spectrum.NextBandView()
+			// }
+			// m.chart = m.spectrum
+			// chartFocused(true)
+			// cmds = append(cmds, onChartRefresh())
 
 		case key.Matches(msg, m.keys.Help):
 			m.helpShown = !m.helpShown
