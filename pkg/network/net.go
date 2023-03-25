@@ -8,7 +8,7 @@ import (
 type Network struct {
 	SSID    string
 	BSSID   string
-	Channel uint8
+	Channel uint8 // optional
 }
 
 func InterfaceByName(name string) (*net.Interface, error) {

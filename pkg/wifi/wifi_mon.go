@@ -7,6 +7,7 @@ import (
 	"time"
 	log "wfmon/pkg/logger"
 	"wfmon/pkg/network"
+	radionet "wfmon/pkg/network/radio"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
@@ -42,7 +43,7 @@ func (mon *Monitor) Configure() error {
 	var err error
 
 	log.Debugf("diassociate %s from any network", mon.iface.Name)
-	if err = network.DisassociateFromNetwork(mon.iface.Name); err != nil {
+	if err = radionet.DisassociateFromNetwork(mon.iface.Name); err != nil {
 		return err
 	}
 

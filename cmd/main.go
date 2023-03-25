@@ -14,6 +14,7 @@ import (
 	"wfmon/pkg/ds"
 	log "wfmon/pkg/logger"
 	"wfmon/pkg/network"
+	radionet "wfmon/pkg/network/radio"
 	"wfmon/pkg/radio"
 	"wfmon/pkg/serv"
 	"wfmon/pkg/widgets/dashboard"
@@ -50,12 +51,12 @@ type Application struct {
 func loadApplication() *Application {
 	var err error
 
-	app := &Application{
-		// TODO
-		ifaceName: strings.TrimSpace("en0"),
-	}
-
+	app := &Application{}
 	app.mode = mode.FromString(os.Getenv(envMode))
+
+	if app.ifaceName, err = radionet.GetDefaultWiFiInterface(); err != nil {
+		app.ifaceName = strings.TrimSpace("en0")
+	}
 
 	if app.gsTimeout, err = time.ParseDuration(os.Getenv("GRACEFUL_SHUTDOWN_TIMEOUT")); err != nil {
 		app.gsTimeout = defaultGSTimeout
@@ -97,7 +98,7 @@ func (app *Application) findInterface() error {
 func (app *Application) findAssociatedNetwork() error {
 	var err error
 
-	if app.associatedNetwork, err = network.GetAssociatedNetwork(app.ifaceName); err != nil {
+	if app.associatedNetwork, err = radionet.GetAssociatedNetwork(app.ifaceName); err != nil {
 		return err
 	}
 
@@ -149,7 +150,7 @@ func (app *Application) init(ctx context.Context) {
 
 	// find current network associated with given iface
 	if err := app.findAssociatedNetwork(); err != nil {
-		log.Fatal(err)
+		log.Warn(err)
 	}
 
 	// create wifi monitor

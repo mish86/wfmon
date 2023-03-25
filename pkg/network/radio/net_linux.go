@@ -1,6 +1,6 @@
 //go:build !windows | !darwin
 
-package network
+package radionet
 
 // Disconnects interface from network. Required before for setting interface in monitoring mode.
 func DisassociateFromNetwork(ifaceName string) error {
@@ -9,6 +9,10 @@ func DisassociateFromNetwork(ifaceName string) error {
 
 // Returns channels supported by given interface.
 func GetSupportedChannels(ifaceName string) ([]int, error) {
+	log.Error("Unimplemented")
+}
+
+func GetAssociatedNetwork(ifaceName string) (Network, error) {
 	log.Error("Unimplemented")
 }
 

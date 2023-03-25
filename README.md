@@ -10,9 +10,9 @@
 - [x] Add RSSI/Quality sparkline chart.
 - [ ] Add flags support. -i --interface. if not provided then use default wifi interface.
 - [ ] Add an option to start program with analyze of given pcap file and end execution. -f --file.
-- [ ] ?Determine default wifi interface using CoreWLAN api.
-- [ ] ?Deassociate interface from network before set on monitoring using CoreWLAN api.
-- [ ] ?Change radio channels during scan using CoreWLAN api.
+- [x] ?Determine default wifi interface using CoreWLAN api.
+- [x] ?Deassociate interface from network before set on monitoring using CoreWLAN api.
+- [x] ?Change radio channels during scan using CoreWLAN api.
 - [ ] Support average sampling for RSSI and Noise values.
 - [ ] Search network by SSID, hotkey /
 - [ ] ?Verbose flag to print logs below the table and charts. -v

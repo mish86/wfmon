@@ -1,6 +1,6 @@
 //go:build darwin
 
-package network
+package airport
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
+	"wfmon/pkg/network"
 )
 
 const airPortPath = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
@@ -110,43 +111,43 @@ func GetSupportedChannels(ifaceName string) ([]int, error) {
 	return channels, nil
 }
 
-func GetAssociatedNetwork(ifaceName string) (Network, error) {
+func GetAssociatedNetwork(ifaceName string) (network.Network, error) {
 	return getAssociatedNetworkAirport()
 }
 
-func getAssociatedNetworkAirport() (Network, error) {
+func getAssociatedNetworkAirport() (network.Network, error) {
 	var (
 		err error
 		raw []byte
 	)
 
 	if raw, err = exec.Command(airPortPath, "-I").Output(); err != nil {
-		return Network{}, err
+		return network.Network{}, err
 	}
 
 	output := string(raw)
 
 	bssIDA := bssIDRegex.FindStringSubmatch(output)
 	if len(bssIDA) != numGroups2 {
-		return Network{}, fmt.Errorf("failed to parse BSSID '%s', expected pattern '%s'", output, bssIDRegex)
+		return network.Network{}, fmt.Errorf("failed to parse BSSID '%s', expected pattern '%s'", output, bssIDRegex)
 	}
 
 	ssIDA := ssIDRegex.FindStringSubmatch(output)
 	if len(ssIDA) != numGroups2 {
-		return Network{}, fmt.Errorf("failed to parse SSID '%s', expected pattern '%s'", output, ssIDRegex)
+		return network.Network{}, fmt.Errorf("failed to parse SSID '%s', expected pattern '%s'", output, ssIDRegex)
 	}
 
 	chA := channelRegex.FindStringSubmatch(output)
 	if len(chA) != numGroups2 {
-		return Network{}, fmt.Errorf("failed to parse channel '%s', expected pattern '%s'", output, channelRegex)
+		return network.Network{}, fmt.Errorf("failed to parse channel '%s', expected pattern '%s'", output, channelRegex)
 	}
 
 	var chI int
 	if chI, err = strconv.Atoi(chA[1]); err != nil {
-		return Network{}, fmt.Errorf("failed to parse channel '%s': %w", chA, err)
+		return network.Network{}, fmt.Errorf("failed to parse channel '%s': %w", chA, err)
 	}
 
-	return Network{
+	return network.Network{
 		BSSID:   bssIDA[1],
 		SSID:    ssIDA[1],
 		Channel: uint8(chI),

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 	log "wfmon/pkg/logger"
-	"wfmon/pkg/network"
+	radionet "wfmon/pkg/network/radio"
 	"wfmon/pkg/repeater"
 )
 
@@ -44,7 +44,7 @@ func NewChannelHopperServ(cfg *ChannelHopperConfig) *ChannelHopperServ {
 func (h *ChannelHopperServ) Configure() error {
 	var err error
 	log.Infof("Loading supported channel on '%s'", h.iface.Name)
-	h.channels, err = network.GetSupportedChannels(h.iface.Name)
+	h.channels, err = radionet.GetSupportedChannels(h.iface.Name)
 
 	return err
 }
@@ -63,7 +63,7 @@ func (h *ChannelHopperServ) hop() error {
 	}
 
 	log.Debugf("Interface %s hopping to channel %d", h.iface.Name, h.channels[h.idx])
-	return network.SetInterfaceChannel(h.iface.Name, h.channels[h.idx])
+	return radionet.SetInterfaceChannel(h.iface.Name, h.channels[h.idx])
 }
 
 // Returns current channel number.
