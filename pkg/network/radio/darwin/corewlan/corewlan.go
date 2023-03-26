@@ -5,7 +5,7 @@ package corewlan
 // Note: preamble should be immediately folowed by import of "C"
 
 /*
-#cgo CFLAGS: -x objective-c
+#cgo CFLAGS: -x objective-c -Wno-incompatible-pointer-types
 #cgo LDFLAGS: -lobjc -framework Cocoa -framework Foundation -framework CoreWLAN
 #import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
@@ -46,7 +46,7 @@ int resultErrorCode(Result *r)
 {
 	if (r == NULL) { return -1; }
 
-	NSError *err = [r err];
+	NSError *err = r->err;
 	if (err == NULL) { return 0; }
 
 	return [err code];
@@ -55,9 +55,9 @@ int resultErrorCode(Result *r)
 static inline
 const char * resultErrorDomain(Result *r)
 {
-	if (r == NULL) { return -1; }
+	if (r == NULL) { return ""; }
 
-	NSError *err = [r err];
+	NSError *err = r->err;
 	if (err == NULL) { return 0; }
 
 	NSString *domain = [err domain];
