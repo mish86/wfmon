@@ -141,14 +141,15 @@ type frameConverter wifi.Frame
 // Converts wifi frame to network netdata.
 func (frame frameConverter) Network() *netdata.Network {
 	entry := &netdata.Network{
-		BSSID:         frame.BSSID.String(),
-		NetworkName:   frame.SSID,
-		Channel:       frame.Channel,
-		ChannelCenter: frame.ChannelCenterSegment0,
-		Offset:        wifi.SecondaryChannelOffset(frame.SecondaryChannelOffset),
-		RSSI:          frame.RSSI,
-		Noise:         frame.Noise,
-		SNR:           frame.RSSI - frame.Noise,
+		BSSID:            frame.BSSID.String(),
+		NetworkName:      frame.SSID,
+		Channel:          frame.Channel,
+		FrequencyCenter0: frame.ChannelCenterSegment0,
+		FrequencyCenter1: frame.ChannelCenterSegment1,
+		Offset:           wifi.SecondaryChannelOffset(frame.SecondaryChannelOffset),
+		RSSI:             frame.RSSI,
+		Noise:            frame.Noise,
+		SNR:              frame.RSSI - frame.Noise,
 	}
 
 	entry.Manuf, entry.ManufLong = manuf.Lookup(frame.BSSID.String())
@@ -157,7 +158,9 @@ func (frame frameConverter) Network() *netdata.Network {
 		SNR:  entry.SNR,
 	}.SignalQuality()
 	entry.Band = wifi.GetBandByChan(frame.Channel)
-	entry.ChannelWidth = wifi.GetBondingWidth(wifi.Frame(frame))
+	entry.WidthOperation = wifi.GetChannelWidthOperation(frame.ChannelWidth)
+	entry.ChannelWidth = wifi.GetChannelWidth(wifi.Frame(frame))
+	entry.WidthOperation = wifi.GetChannelWidthOperation(frame.ChannelWidth)
 
 	return entry
 }

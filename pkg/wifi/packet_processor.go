@@ -56,6 +56,7 @@ func (p *PacketDiscover) DiscoverRadioFrame() *RadioFrame {
 		return nil
 	}
 
+	// phyType := radio.VHT.Bandwidth
 	// Channel Frequency
 	freq := int(radio.ChannelFrequency)
 	// Received Signal Strength Indicator (RSSI)

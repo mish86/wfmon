@@ -6,6 +6,7 @@ import (
 	"wfmon/pkg/widgets/sort"
 	column "wfmon/pkg/widgets/wifitable/col"
 	"wfmon/pkg/widgets/wifitable/row"
+	"wfmon/pkg/wifi"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -191,7 +192,13 @@ func cellViewers() map[string]row.FncCellViewer {
 			return table.NewStyledCell(strconv.Itoa(int(row.Channel)), row.GetRowStyle())
 		},
 		WidthKey: func(row *row.Data) any {
-			return table.NewStyledCell(strconv.Itoa(int(row.ChannelWidth)), row.GetRowStyle())
+			var text string
+			if row.WidthOperation == wifi.WidthOperation80And80 {
+				text = row.WidthOperation.String()
+			} else {
+				text = strconv.Itoa(int(row.ChannelWidth))
+			}
+			return table.NewStyledCell(text, row.GetRowStyle())
 		},
 		BandKey: func(row *row.Data) any {
 			style := lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Inherit(row.GetRowStyle())

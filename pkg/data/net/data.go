@@ -22,19 +22,21 @@ const (
 
 // Aggragated network data.
 type Network struct {
-	BSSID         string // Station MAC address
-	Manuf         string // Short vendor' name
-	ManufLong     string // Long vendor' name
-	NetworkName   string // SSID
-	Channel       uint8  // Primary channel number
-	ChannelCenter uint8  // ChannelCenterSegment
-	ChannelWidth  uint16 // Channel Width in MHz
-	Offset        wifi.SecondaryChannelOffset
-	Band          wifi.Band // Bandwidth 2.4 or 5 Ghz
-	RSSI          int8      // Received Signal Strength Indicator (RSSI)
-	Quality       Quality   // Signal Quality
-	Noise         int8      // Noise level
-	SNR           int8      // Signal to Noise Ratio (SNR)
+	BSSID            string                      // Station MAC address
+	Manuf            string                      // Short vendor' name
+	ManufLong        string                      // Long vendor' name
+	NetworkName      string                      // SSID
+	Channel          uint8                       // Primary channel number
+	Offset           wifi.SecondaryChannelOffset // Secondary channel direction (2.5/5Ghz HT)
+	FrequencyCenter0 uint8                       // Lower frequency segment center (5GHz VHT)
+	FrequencyCenter1 uint8                       // Second frequency segment center (5GHz VHT)
+	ChannelWidth     uint16                      // Channel width, MHz
+	WidthOperation   wifi.ChannelWidthOperation  // Channel width operation (5GHz VHT)
+	Band             wifi.Band                   // Bandwidth 2.4/5, Ghz
+	RSSI             int8                        // Received Signal Strength Indicator (RSSI), dBm
+	Quality          Quality                     // Signal Quality, %
+	Noise            int8                        // Noise level, dBm
+	SNR              int8                        // Signal to Noise Ratio (SNR), dBm
 	// Seen
 	// Rate
 }

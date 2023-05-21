@@ -83,3 +83,7 @@ func CaptureWithTimeout(ifName string, timeout time.Duration) (*pcap.Handle, err
 	opts.Timeout = timeout
 	return CaptureWithOptions(ifName, opts)
 }
+
+func CaptureFromFile(file string) (*pcap.Handle, error) {
+	return pcap.OpenOffline(file)
+}

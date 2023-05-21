@@ -11,19 +11,23 @@ import (
 )
 
 const (
-	wave20Mhz            = 20 // wave width in Mhz
-	wave20MhzWidth       = 4  // number of channels in a wave of 20Mhz width
-	halfOfWave20MhzWidth = 2  // number of channels in half of a wave of 20Mhz width
+	wave20Mhz                          = 20 // wave width in Mhz
+	wave20MhzWidth                     = 4  // number of channels in a wave of 20Mhz width
+	halfOfWave80MhzWidthWithoutCenter  = 6  // number of channels in a wave of 80Mhz width excluding center segment
+	halfOfWave160MhzWidthWithoutCenter = 14 // number of channels in a wave of 160Mhz width excluding center segment
+	halfOfWave20MhzWidth               = 2  // number of channels in half of a wave of 20Mhz width
 )
 
 type Wave struct {
-	Key            netdata.Key    // network key
-	Band           wifi.Band      // ISM or UNII
-	Value          float64        // RSSI or Quality
-	PrimaryChannel uint8          // primary channel
-	Sign           int8           // secondary channel: +1 above / -1 below
-	Width          uint8          // channels number in a wave
-	Color          lipgloss.Color // spectrum color
+	Key            netdata.Key                // network key
+	Band           wifi.Band                  // ISM or UNII
+	Value          float64                    // RSSI or Quality
+	Channel        uint8                      // primary channel
+	Sign           int8                       // HT secondary channel location: +1 above / -1 below
+	Center         [2]uint8                   // VHT frequency centers. lower is mandatory for VHT and second is mandatory for VHT and 80+80
+	WidthOperation wifi.ChannelWidthOperation // VHT Channel Width Operaiton
+	Width          uint8                      // 20Mhz channels count in a wave
+	Color          lipgloss.Color             // spectrum color
 }
 
 func (wave *Wave) LowerChannel() uint8 {
@@ -32,13 +36,27 @@ func (wave *Wave) LowerChannel() uint8 {
 	// }
 
 	// return cmp.Min(wave.PrimaryChannel, wave.SecondaryChannel)
-	return cmp.Min(wave.PrimaryChannel, uint8(int8(wave.PrimaryChannel)+wave.Sign*wave20MhzWidth*int8(wave.Width-1)))
+
+	// HT
+	if wave.Center[0] == 0 {
+		return cmp.Min(wave.Channel, uint8(int8(wave.Channel)+wave.Sign*wave20MhzWidth*int8(wave.Width-1)))
+	}
+
+	// VHT
+	switch wave.WidthOperation {
+	case wifi.WidthOperation80, wifi.WidthOperation80And80:
+		return cmp.Min(wave.Channel, wave.Center[0]-halfOfWave80MhzWidthWithoutCenter)
+	case wifi.WidthOperation160:
+		return cmp.Min(wave.Channel, wave.Center[0]-halfOfWave160MhzWidthWithoutCenter)
+	default:
+		return cmp.Min(wave.Channel, uint8(int8(wave.Channel)+wave.Sign*wave20MhzWidth*int8(wave.Width-1)))
+	}
 }
 
-func (wave *Wave) UpperChannel() uint8 {
-	// return cmp.Max(wave.PrimaryChannel, wave.SecondaryChannel)
-	return cmp.Max(wave.PrimaryChannel, uint8(int8(wave.PrimaryChannel)+wave.Sign*wave20MhzWidth*int8(wave.Width-1)))
-}
+// func (wave *Wave) UpperChannel() uint8 {
+// 	// return cmp.Max(wave.PrimaryChannel, wave.SecondaryChannel)
+// 	return cmp.Max(wave.Channel, uint8(int8(wave.Channel)+wave.Sign*wave20MhzWidth*int8(wave.Width-1)))
+// }
 
 type Waver struct {
 	netdata.Network
@@ -67,9 +85,11 @@ func (c Waver) Wave() Wave {
 		Key:            net.Key(),
 		Band:           net.Band,
 		Value:          val,
-		PrimaryChannel: net.Channel,
+		Channel:        net.Channel,
 		Sign:           sign,
 		Width:          uint8(net.ChannelWidth / wave20Mhz),
+		WidthOperation: net.WidthOperation,
+		Center:         [2]uint8{c.FrequencyCenter0, c.FrequencyCenter1},
 	}
 }
 

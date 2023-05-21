@@ -29,6 +29,7 @@ import (
 
 const (
 	envMode          = "MODE"
+	pcapFile         = "PCAP_FILE"
 	defaultGSTimeout = time.Second * 15
 )
 
@@ -45,6 +46,7 @@ type Application struct {
 	chHopInterval     time.Duration
 	ifaceName         string
 	iface             *net.Interface
+	file              string
 	associatedNetwork network.Network
 }
 
@@ -53,9 +55,12 @@ func loadApplication() *Application {
 
 	app := &Application{}
 	app.mode = mode.FromString(os.Getenv(envMode))
+	app.file = os.Getenv(pcapFile)
 
-	if app.ifaceName, err = radionet.GetDefaultWiFiInterface(); err != nil {
-		app.ifaceName = strings.TrimSpace("en0")
+	if !app.isFromFile() {
+		if app.ifaceName, err = radionet.GetDefaultWiFiInterface(); err != nil {
+			app.ifaceName = strings.TrimSpace("en0")
+		}
 	}
 
 	if app.gsTimeout, err = time.ParseDuration(os.Getenv("GRACEFUL_SHUTDOWN_TIMEOUT")); err != nil {
@@ -67,6 +72,10 @@ func loadApplication() *Application {
 	}
 
 	return app
+}
+
+func (app *Application) isFromFile() bool {
+	return len(app.file) > 0
 }
 
 func (app *Application) initLogger() {
@@ -144,24 +153,23 @@ func (app *Application) shutdown() {
 // Creates and initializes services and tea program.
 func (app *Application) init(ctx context.Context) {
 	// find interface by name
-	if err := app.findInterface(); err != nil {
-		log.Fatal(err)
+	if !app.isFromFile() {
+		if err := app.findInterface(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// find current network associated with given iface
-	if err := app.findAssociatedNetwork(); err != nil {
-		log.Warn(err)
+	if !app.isFromFile() {
+		if err := app.findAssociatedNetwork(); err != nil {
+			log.Warn(err)
+		}
 	}
 
 	// create wifi monitor
 	mon := wifi.NewMonitor(&wifi.Config{
 		IFace: app.iface,
-	})
-
-	// create channel hopper
-	hopper := radio.NewChannelHopperServ(&radio.ChannelHopperConfig{
-		IFace:       app.iface,
-		HopInterval: app.chHopInterval,
+		File:  app.file,
 	})
 
 	// create datasource and tui
@@ -188,9 +196,21 @@ func (app *Application) init(ctx context.Context) {
 	)
 
 	// setup services
-	app.servs = []serv.Serv{mon, hopper}
-	app.starters = []serv.Starter{mon, hopper, dataSource}
-	app.shutdowners = []serv.Shutdowner{mon, hopper}
+	app.servs = []serv.Serv{mon}
+	app.starters = []serv.Starter{mon, dataSource}
+	app.shutdowners = []serv.Shutdowner{mon}
+
+	// create channel hopper
+	if !app.isFromFile() {
+		hopper := radio.NewChannelHopperServ(&radio.ChannelHopperConfig{
+			IFace:       app.iface,
+			HopInterval: app.chHopInterval,
+		})
+
+		app.servs = append(app.servs, hopper)
+		app.starters = append(app.starters, hopper)
+		app.shutdowners = append(app.shutdowners, hopper)
+	}
 
 	// run configurations
 	for _, configer := range app.servs {

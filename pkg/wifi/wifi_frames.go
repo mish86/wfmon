@@ -10,8 +10,8 @@ import (
 // Radio Frame.
 type RadioFrame struct {
 	Frequency int  // Channel Frequency
-	RSSI      int8 // Received Signal Strength Indicator (RSSI)
-	Noise     int8 // Noise level
+	RSSI      int8 // Received Signal Strength Indicator (RSSI), dBm
+	Noise     int8 // Noise level, dBm
 }
 
 func (f *RadioFrame) String() string {
@@ -73,9 +73,13 @@ type HTOperationIE struct {
 
 // Very High Throughput Operation Information Element (tag).
 type VHTOperationIE struct {
-	ChannelWidth          uint8 // 0 - 20 MHz or 40 MHz BSS Bandwidth; 1 - 80 MHz, 160 MHz or 80+80 MHz BSS Bandwidth
+	// 0 - 20MHz or 40MHz; 1 - 80MHz; 2 - 160MHz; 3 - 80+80MHz; others - reserved
+	ChannelWidth uint8
+	// the center channel frequency in 80Mhz and 160MHz operations;
+	// the center of the lower frequency segment in 80+80MHz operation
 	ChannelCenterSegment0 uint8
-	ChannelCenterSegment1 uint8 // ?
+	// the center of the second frequency segment in 80+80 MHz operation
+	ChannelCenterSegment1 uint8
 }
 
 type DSSetIE struct {
