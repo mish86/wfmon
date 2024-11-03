@@ -6,8 +6,7 @@ package corewlan
 
 /*
 #cgo CFLAGS: -x objective-c -Wno-incompatible-pointer-types
-#cgo LDFLAGS: -lobjc -framework Cocoa -framework Foundation -framework CoreWLAN
-#import <Cocoa/Cocoa.h>
+#cgo LDFLAGS: -lobjc -framework Foundation -framework CoreWLAN
 #import <Foundation/Foundation.h>
 #import <CoreWLAN/CoreWLAN.h>
 #import <string.h>
