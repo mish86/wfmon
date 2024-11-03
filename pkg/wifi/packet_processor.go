@@ -4,6 +4,7 @@ package wifi
 
 import (
 	"net"
+	"regexp"
 	log "wfmon/pkg/logger"
 
 	"github.com/google/gopacket"
@@ -175,26 +176,35 @@ func (p *PacketDiscover) DiscoverIEs() *InformationElements {
 
 // Discovers HT Operation from Information Element.
 func (ie *InformationElements) discoverHTIE(dot11info *layers.Dot11InformationElement) {
-	ie.HTOperationIE = HTOperationIE{
-		PrimaryChannel:         dot11info.Contents[2],
-		SecondaryChannelOffset: dot11info.Contents[3] & 0b00000011,        //nolint:gomnd // ignore
-		SupportedChannelWidth:  (dot11info.Contents[3] & 0b00000100) >> 2, //nolint:gomnd // ignore
+	// check malformed packet
+	if len(dot11info.Contents) >= 4 {
+		ie.HTOperationIE = HTOperationIE{
+			PrimaryChannel:         dot11info.Contents[2],
+			SecondaryChannelOffset: dot11info.Contents[3] & 0b00000011,        //nolint:gomnd // ignore
+			SupportedChannelWidth:  (dot11info.Contents[3] & 0b00000100) >> 2, //nolint:gomnd // ignore
+		}
 	}
 }
 
 // Discovers VHT Operation from Information Element.
 func (ie *InformationElements) discoverVHTIE(dot11info *layers.Dot11InformationElement) {
-	ie.VHTOperationIE = VHTOperationIE{
-		ChannelWidth:          dot11info.Contents[2],
-		ChannelCenterSegment0: dot11info.Contents[3],
-		ChannelCenterSegment1: dot11info.Contents[4],
+	// check malformed packet
+	if len(dot11info.Contents) >= 5 {
+		ie.VHTOperationIE = VHTOperationIE{
+			ChannelWidth:          dot11info.Contents[2],
+			ChannelCenterSegment0: dot11info.Contents[3],
+			ChannelCenterSegment1: dot11info.Contents[4],
+		}
 	}
 }
 
 // Discovers DS Set from Information Element.
 func (ie *InformationElements) discoverDSSetIE(dot11info *layers.Dot11InformationElement) {
-	ie.DSSetIE = DSSetIE{
-		Channel: dot11info.Info[0],
+	// check malformed packet
+	if len(dot11info.Info) >= 1 {
+		ie.DSSetIE = DSSetIE{
+			Channel: dot11info.Info[0],
+		}
 	}
 }
 
@@ -238,8 +248,18 @@ func (p *PacketDiscover) DiscoverMgmtBeaconFrame() *MgmtFrame {
 		return nil
 	}
 
+	// malformed packet
+	if len(beacon.BaseLayer.Contents) < 14 {
+		return nil
+	}
 	ssIDLen := int(beacon.BaseLayer.Contents[13])
+	// malformed packet
+	if ssIDLen > len(beacon.BaseLayer.Contents)-14 {
+		return nil
+	}
 	ssID := string(beacon.BaseLayer.Contents[14 : 14+ssIDLen])
+	re := regexp.MustCompile(`[[:cntrl:]]`)
+	ssID = re.ReplaceAllString(ssID, "?")
 	frame := &MgmtFrame{
 		SSID: ssID,
 	}
@@ -255,8 +275,20 @@ func (p *PacketDiscover) DiscoverMgmtProbeRespFrame() *MgmtFrame {
 		return nil
 	}
 
+	// malformed packet
+	if len(resp.BaseLayer.Contents) < 14 {
+		return nil
+	}
 	ssIDLen := int(resp.BaseLayer.Contents[13])
+	// malformed packet
+	if ssIDLen > len(resp.BaseLayer.Contents)-14 {
+		return nil
+	}
+
+	ssIDLen = min(ssIDLen, len(resp.BaseLayer.Contents)-14)
 	ssID := string(resp.BaseLayer.Contents[14 : 14+ssIDLen])
+	re := regexp.MustCompile(`[[:cntrl:]]`)
+	ssID = re.ReplaceAllString(ssID, "?")
 	frame := &MgmtFrame{
 		SSID: ssID,
 	}
