@@ -4,7 +4,6 @@ package radionet
 
 import (
 	"wfmon/pkg/network"
-	"wfmon/pkg/network/radio/darwin/airport"
 	"wfmon/pkg/network/radio/darwin/corewlan"
 )
 
@@ -16,13 +15,13 @@ func GetDefaultWiFiInterface() (string, error) {
 // Returns network associated with the given interface.
 // Should be invoked before setting interface in monitoring mode.
 func GetAssociatedNetwork(ifaceName string) (network.Network, error) {
-	return airport.GetAssociatedNetwork(ifaceName)
+	return corewlan.GetAssociatedNetwork(ifaceName)
 }
 
 // Disconnects interface from network.
 // Should be invoked before setting interface in monitoring mode.
 func DisassociateFromNetwork(ifaceName string) error {
-	return airport.DisassociateFromNetwork(ifaceName)
+	return corewlan.DisassociateFromNetwork(ifaceName)
 }
 
 // Returns channels supported by given interface.
