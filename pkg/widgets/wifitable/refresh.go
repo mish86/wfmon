@@ -56,11 +56,14 @@ func (m *Model) getRows() []table.Row {
 // Fetches networks from data source.
 // Sorts networks as per current column and order.
 // Invokes @refresh to redraw the table.
-func (m *Model) onRefreshMsg(msg refreshMsg) {
+func (m *Model) onRefreshMsg(_ refreshMsg) {
+	selectedNetwork, _ := m.GetSelectedNetwork()
+
 	// FIXME: race at access to networks and colors in update.
 	m.networks = m.dataSource.Networks()
 
 	iter := color.Random()
+	// preserve row colors
 	for _, network := range m.networks {
 		key := network.Key()
 		if _, found := m.colors[key]; !found {
@@ -71,6 +74,18 @@ func (m *Model) onRefreshMsg(msg refreshMsg) {
 	// apply current sorting
 	m.sort.Sort(m.networks)
 
+	// preserve selected row
+	currendRowID := 0
+	for rowID, network := range m.networks {
+		key := network.Key()
+		if key.Compare(selectedNetwork.Key()) == 0 {
+			currendRowID = rowID
+		}
+	}
+
 	// apply columns and rows to table
 	m.refresh()
+
+	// preserve selected row
+	m.Model = m.WithHighlightedRow(currendRowID)
 }
