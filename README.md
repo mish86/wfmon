@@ -1,3 +1,6 @@
+### Demo
+[![asciicast](https://asciinema.org/a/7WTEroHbU9YMrMYDXKW37ZxtX.svg)](https://asciinema.org/a/7WTEroHbU9YMrMYDXKW37ZxtX)
+
 ### TODO
 - [x] Calcualte Width in Mghz (20/40/80/160).
 - [x] Switch column view for RSSI/Quality/Bars with sorting support.
